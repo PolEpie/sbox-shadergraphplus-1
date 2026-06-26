@@ -534,8 +534,9 @@ public sealed class SampleTexture2DTriplanarNode : Texture2DSamplerBase
 }
 
 /// <summary>
-/// Sample a normal map from 3 directions with Whiteout blending. Outputs <b>world-space</b> normals.
-/// Use a TransformNormal node (World → Tangent, DecodeNormal OFF) to convert before the Material Normal input.
+/// Sample a normal map from 3 directions with Whiteout blending.
+/// Defaults to <b>tangent-space</b> output so it can be plugged straight into the Material Normal input.
+/// Set <see cref="OutputSpace"/> to World if you need the raw world-space normal for further processing.
 /// </summary>
 [Title( "Sample Texture 2D Normal Map Triplanar" ), Category( "Textures" ), Icon( "colorize" )]
 public sealed class SampleTexture2DNormalMapTriplanarNode : Texture2DSamplerBase
@@ -589,6 +590,12 @@ public sealed class SampleTexture2DNormalMapTriplanarNode : Texture2DSamplerBase
 	[InputDefault( nameof( BlendFactorInput ) )]
 	public float DefaultBlendFactor { get; set; } = 4.0f;
 
+	/// <summary>
+	/// Space of the output normal. Tangent (default) plugs straight into the Material Normal input,
+	/// World gives the raw blended world-space normal.
+	/// </summary>
+	public OutputNormalSpace OutputSpace { get; set; } = OutputNormalSpace.Tangent;
+
 	protected override TextureInput PreviewUI => new TextureInput
 	{
 		Type = TextureType.Tex2D,
@@ -640,6 +647,13 @@ public sealed class SampleTexture2DNormalMapTriplanarNode : Texture2DSamplerBase
 			normal.IsValid ? normal.Cast( 3 ) : "normalize( i.vNormalWs.xyz )",
 			blendScalar
 		);
+
+		// TexTriplanar_Normal blends in world space. Convert to tangent space so the result
+		// can feed the Material Normal input directly (which expects tangent-space normals).
+		if ( OutputSpace == OutputNormalSpace.Tangent )
+		{
+			result = $"Vec3WsToTs( {result}, i.vNormalWs, i.vTangentUWs, i.vTangentVWs )";
+		}
 
 		return new NodeResult( ResultType.Vector3, result );
 	};
