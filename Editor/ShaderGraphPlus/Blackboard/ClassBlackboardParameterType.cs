@@ -19,7 +19,7 @@ public class ClassBlackboardParameterType : IBlackboardParameterType
 			DisplayInfo = new DisplayInfo();
 	}
 
-	public virtual IBlackboardParameter CreateParameter( INodeGraph graph, string name = "" )
+	public virtual IBlackboardParameter CreateParameter( IBlackboardNodeGraph graph, string name = "" )
 	{
 		var sgp = graph as ShaderGraphPlus;
 
@@ -90,7 +90,7 @@ public sealed class ShaderFeatureParameterType : ClassBlackboardParameterType
 	{
 	}
 
-	public override IBlackboardParameter CreateParameter( INodeGraph graph, string name = "" )
+	public override IBlackboardParameter CreateParameter( IBlackboardNodeGraph graph, string name = "" )
 	{
 		var sg = graph as ShaderGraphPlus;
 		var parameter = base.CreateParameter( graph );
