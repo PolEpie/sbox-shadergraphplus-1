@@ -55,15 +55,6 @@ public class ClassBlackboardParameterType : IBlackboardParameterType
 	}
 }
 
-public sealed class GroupParameterType : ClassBlackboardParameterType
-{
-	protected override string DefaultBaseName => "Group";
-
-	public GroupParameterType( TypeDescription type ) : base( type )
-	{
-	}
-}
-
 public sealed class MaterialParameterType : ClassBlackboardParameterType
 {
 	protected override string DefaultBaseName => "MaterialParameter";
