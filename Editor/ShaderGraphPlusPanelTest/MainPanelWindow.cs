@@ -61,23 +61,21 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 		var properties = new Panel();
 		properties.AddClass( "sg-props" );
 
-		//var graph = new TestGraphView { OnSelect = node => ShowProperties( properties, node ) };
-		//ShowProperties( properties, graph.Nodes[^1] );
-
 		ConsolePanel.Hook();
 
-		var dock = AddChild( new DockHost() );
-		//dock.Register( "graph", "Graph", graph, canClose: false, icon: "schema" );
-		dock.Register( "palette", "Palette", () => new PalettePanel(), icon: "palette" );
-		dock.Register( "preview", "Preview", () => new PreviewPanel(), icon: "photo" );
-		dock.Register( "properties", "Properties", properties, icon: "tune" );
-		dock.Register( "console", "Console", () => new ConsolePanel(), icon: "text_snippet" );
+		var dockHost = AddChild( new DockHost() );
 
-		//dock.Dock( "graph" );
-		dock.Dock( "palette", position: DockPosition.Left, fraction: 0.18f );
-		dock.Dock( "preview", position: DockPosition.Right, fraction: 0.26f );
-		dock.Dock( "console", position: DockPosition.Bottom, fraction: 0.26f );
-		dock.Dock( "properties", "preview", DockPosition.Bottom, 0.55f );
+		dockHost.Register( "graph", "Graph",  () => new GraphViewPanel(), canClose: false, icon: "account_tree" );
+		dockHost.Register( "palette", "Palette", () => new PalettePanel(), icon: "palette" );
+		dockHost.Register( "preview", "Preview", () => new PreviewPanel(), icon: "photo" );
+		dockHost.Register( "properties", "Properties", properties, icon: "tune" );
+		dockHost.Register( "console", "Console", () => new ConsolePanel(), icon: "text_snippet" );
+
+		dockHost.Dock( "graph" );
+		dockHost.Dock( "palette", position: DockPosition.Left, fraction: 0.18f );
+		dockHost.Dock( "preview", position: DockPosition.Right, fraction: 0.26f );
+		dockHost.Dock( "console", position: DockPosition.Bottom, fraction: 0.26f );
+		dockHost.Dock( "properties", "preview", DockPosition.Bottom, 0.55f );
 	}
 
 	public void New()
