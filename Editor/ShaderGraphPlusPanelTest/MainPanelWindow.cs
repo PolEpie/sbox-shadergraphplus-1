@@ -52,8 +52,6 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 		toolbar.AddButton( "Compile", "build", Compile );
 		
 		toolbar.AddSpacer();
-		
-		toolbar.Add.Label( "Example only", "status" );
 	}
 
 	private void CreateUI()
