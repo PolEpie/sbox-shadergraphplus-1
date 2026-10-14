@@ -8,5 +8,7 @@ internal static class ShaderGraphPlusPanelTestEditorMenus
 	public static void OpenPanelTest()
 	{
 		Log.Info( "OpenPanelTest() called!" );
+
+		//MainPanelWindow.OpenTestPanelWindow();
 	}
 }
