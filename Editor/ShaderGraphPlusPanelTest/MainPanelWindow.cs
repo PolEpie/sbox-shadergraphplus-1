@@ -12,7 +12,7 @@ public class MainPanelWindow : PanelWindow
 	{
 	}
 
-	public static void OpenTest()
+	public static void OpenTestPanelWindow()
 	{
 	}
 }
