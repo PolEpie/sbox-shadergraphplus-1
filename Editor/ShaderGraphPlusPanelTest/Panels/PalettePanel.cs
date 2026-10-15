@@ -7,24 +7,47 @@ namespace ShaderGraphPlusPanelTest;
 
 public sealed class PalettePanel : Panel
 {
-	private bool IsSubgraph { get; }
+	private bool _isSubgraph { get; }
 
 	private TextInput _searchFilter;
-	private Panel _list;
 
-	public PalettePanel() : base()
+	private readonly Sandbox.UI.TreeView<Node> _tree;
+
+	public PalettePanel( bool isSubgraph ) : base()
 	{
+		_isSubgraph = isSubgraph;
+
 		var panel = new Panel();
 		panel.AddClass( "editor-dock-pane" );
-		
+	
 		BuildToolbar( panel );
+		
+		_tree = new Sandbox.UI.TreeView<Node>();
+		_tree.AddClass( "demo-tree" );
+		_tree.GetChildren = treeNode => treeNode.Children;
+		_tree.GetParent = treeNode => treeNode.Parent;
+		_tree.CanExpand = treeNode => treeNode.CanHaveChildren;
+		_tree.GetHeight = treeNode => treeNode is CategoryNode ? 30 : Theme.RowHeight;
+		_tree.GetTooltip = treeNode => treeNode.ToolTip;
+		_tree.OnRow = BindRow;
+		_tree.OnSelect = treeNode => SGPLogger.Info( $"selected {treeNode.Name}" );
+		_tree.OnActivate = treeNode => SGPLogger.Info( $"activated {treeNode.Name}" );
+		_tree.OnRename = ( treeNode, text ) => { treeNode.Name = text; SGPLogger.Info( $"renamed to {text}" ); };
+		_tree.CanDrag = treeNode => treeNode is not CategoryNode;
+		//_tree.OnItemDropped = Drop;
+		//_tree.OnContextMenu = OpenMenu;
+
+		panel.AddChild( _tree );
 		
 		AddChild( panel );
 
-		_list = panel.AddChild( new Panel() );
-		_list.AddClass( "sg-list" );
+		UpdateTree();
+	}
 
-		UpdateList();
+	void BindRow( Sandbox.UI.TreeRow row, Node node )
+	{
+		row.Text = node.Name;
+		row.IconName = node.Icon;
 	}
 
 	void BuildToolbar( Panel panel )
@@ -35,7 +58,7 @@ public sealed class PalettePanel : Panel
 		_searchFilter = toolbar.AddChild( new TextInput( "Filter Nodes..", "search" ) );
 		_searchFilter.OnChange = ( value ) =>
 		{
-			UpdateList();
+			UpdateTree();
 		};
 	}
 
@@ -47,11 +70,11 @@ public sealed class PalettePanel : Panel
 				if ( x.IsAbstract ) return false;
 				if ( x.HasAttribute<HideAttribute>() ) return false;
 				if ( x.HasAttribute<InternalNodeAttribute>() ) return false;
-				if ( IsSubgraph && x.TargetType == typeof( Result ) )
+				if ( _isSubgraph && x.TargetType == typeof( Result ) )
 				{
 					return false;
 				}
-				if ( !IsSubgraph && x.HasAttribute<SubgraphOnlyAttribute>() ) return false;
+				if ( !_isSubgraph && x.HasAttribute<SubgraphOnlyAttribute>() ) return false;
 				if ( x.TargetType == typeof( SubgraphNode ) )
 				{
 					return false;
@@ -72,23 +95,90 @@ public sealed class PalettePanel : Panel
 			.ThenBy( p => p.Key );
 	}
 
-	public void UpdateList()
+	public void UpdateTree()
 	{
-		if ( _list == null )
-			return;
-
-		_list.DeleteChildren( true );
-
+		var roots = new List<Node>();
 		foreach ( var category in GetItems() )
 		{
-			_list.Add.Label( category.Key, "category" );
+			var categoryNode = new CategoryNode( category.Key ?? "Uncategorized" );
 
-			//foreach ( var displayInfo in category.OrderBy( x => x.Name ) )
-			//{
-			//	var item = _list.Add.Panel( "item" );
-			//	item.Add.Icon( displayInfo.Icon, "icon" );
-			//	item.Add.Label( displayInfo.Name );
-			//}
+			foreach ( var displayInfo in category.OrderBy( x => x.Name ) )
+			{
+				categoryNode.AddItem( new Node( displayInfo.Name ) { Icon = displayInfo.Icon } );
+			}
+
+			roots.Add( categoryNode );
 		}
+
+		_tree.Roots = roots;
+		_tree.Refresh();
+	}
+}
+
+class CategoryNode : Node
+{
+	public override bool CanHaveChildren => true;
+
+	public CategoryNode( string name ) : base( name )
+	{
+	}
+}
+
+class Node
+{
+	public string Name { get; set; }
+
+	public string Icon { get; set; }
+
+	public string ToolTip { get; set; }
+
+	public Node Parent { get; set; }
+
+	List<Node> _children;
+
+	public Node( string name )
+	{
+		Name = name;
+	}
+
+	public virtual bool CanHaveChildren => false;
+
+	public List<Node> Children
+	{
+		get
+		{
+			if ( _children is not null ) return _children;
+
+			_children = new List<Node>();
+			if ( !CanHaveChildren ) return _children;
+
+			return _children;
+		}
+	}
+
+	public void AddItem( Node item )
+	{
+		if ( item is null )
+			return;
+
+		if ( !CanHaveChildren )
+			return;
+
+		if ( _children == null )
+		{
+			_children = new List<Node>();
+		}
+
+		_children.Add( item );
+	}
+
+	public bool IsDescendantOf( Node other )
+	{
+		for ( var p = Parent; p is not null; p = p.Parent )
+		{
+			if ( p == other ) return true;
+		}
+
+		return false;
 	}
 }

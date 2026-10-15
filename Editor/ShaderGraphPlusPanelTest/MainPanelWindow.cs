@@ -64,7 +64,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 		var dockHost = AddChild( new DockHost() );
 
 		dockHost.Register( "graph", "Graph",  () => new GraphViewPanel(), canClose: false, icon: "account_tree" );
-		dockHost.Register( "palette", "Palette", () => new PalettePanel(), icon: "palette" );
+		dockHost.Register( "palette", "Palette", () => new PalettePanel( false ), icon: "palette" );
 		dockHost.Register( "preview", "Preview", () => new PreviewPanel(), icon: "photo" );
 		dockHost.Register( "properties", "Properties", properties, icon: "tune" );
 		dockHost.Register( "console", "Console", () => new ConsolePanel(), icon: "text_snippet" );
