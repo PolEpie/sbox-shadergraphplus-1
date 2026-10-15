@@ -13,7 +13,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 
 	[Menu( "Editor", "Shader Graph Plus/NewEditorTest", "schema" )]
 	public static void OpenNewEditorTest()
-	{   
+	{
 		_window?.Dispose();
 		_window = new PanelWindow( "Shader Graph Plus", new Vector2( 1700, 1050 ) ) { MinSize = new Vector2( 800, 480 ) };
 		_window.Root.AddChild( new ShaderGraphPlusPanelTest() );
@@ -46,11 +46,11 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 		toolbar.AddButton( "New", "create_new_folder", New );
 		toolbar.AddButton( "Open", "folder_open", Open );
 		toolbar.AddButton( "Save", "save", Save );
-		
+
 		toolbar.AddSeparator();
-		
+
 		toolbar.AddButton( "Compile", "build", Compile );
-		
+
 		toolbar.AddSpacer();
 	}
 
@@ -63,7 +63,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 
 		var dockHost = AddChild( new DockHost() );
 
-		dockHost.Register( "graph", "Graph",  () => new GraphViewPanel(), canClose: false, icon: "account_tree" );
+		dockHost.Register( "graph", "Graph", () => new GraphViewPanel(), canClose: false, icon: "account_tree" );
 		dockHost.Register( "palette", "Palette", () => new PalettePanel( false ), icon: "palette" );
 		dockHost.Register( "preview", "Preview", () => new PreviewPanel(), icon: "photo" );
 		dockHost.Register( "properties", "Properties", properties, icon: "tune" );

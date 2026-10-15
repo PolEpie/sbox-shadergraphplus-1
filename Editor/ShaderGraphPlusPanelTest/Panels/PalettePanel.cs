@@ -19,9 +19,9 @@ public sealed class PalettePanel : Panel
 
 		var panel = new Panel();
 		panel.AddClass( "editor-dock-pane" );
-	
+
 		BuildToolbar( panel );
-		
+
 		_tree = new Sandbox.UI.TreeView<Node>();
 		_tree.AddClass( "demo-tree" );
 		_tree.GetChildren = treeNode => treeNode.Children;
@@ -38,7 +38,7 @@ public sealed class PalettePanel : Panel
 		//_tree.OnContextMenu = OpenMenu;
 
 		panel.AddChild( _tree );
-		
+
 		AddChild( panel );
 
 		UpdateTree();

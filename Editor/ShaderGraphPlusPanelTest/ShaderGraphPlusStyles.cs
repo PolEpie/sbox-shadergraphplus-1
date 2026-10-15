@@ -13,7 +13,7 @@ public static class ShaderGraphPlusStyles
 	/// Found in : sbox\addons\editor\assets\styles
 	/// </summary>
 	public const string GalleryScss = "/styles/gallery.scss";
-	
+
 	public const string ShaderGraphPlusScss = @"
 		ShaderGraphPlusPanel > .main-toolbar { flex-shrink: 0; height: 40px; padding: 0px 8px; border-bottom: 1px solid #26282e; }
 		ShaderGraphPlusPanel .status { color: #6e737c; font-size: 11px; align-self: center; }
