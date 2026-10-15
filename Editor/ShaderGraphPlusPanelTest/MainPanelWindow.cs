@@ -75,7 +75,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 		Option( file, "Save As...", "Ctrl+Shift+S", SaveAs );
 
 		file.AddSeparator();
-		
+
 		Option( file, "Quit", "Alt+F4", Quit );
 
 		var edit = menus.AddMenu( "Edit" );

@@ -160,8 +160,8 @@ class Node
 
 			return _children;
 		}
-		set 
-		{ 
+		set
+		{
 			_children = value;
 		}
 	}
