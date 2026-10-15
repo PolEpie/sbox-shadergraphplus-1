@@ -116,6 +116,18 @@ class CategoryNode : Node
 
 	public CategoryNode( string name ) : base( name )
 	{
+		Children = new List<Node>();
+	}
+
+	public void AddItem( Node item )
+	{
+		if ( item is null )
+			return;
+
+		if ( !CanHaveChildren )
+			return;
+
+		Children.Add( item );
 	}
 }
 
@@ -129,8 +141,6 @@ class Node
 
 	public Node Parent { get; set; }
 
-	List<Node> _children;
-
 	public Node( string name )
 	{
 		Name = name;
@@ -138,6 +148,7 @@ class Node
 
 	public virtual bool CanHaveChildren => false;
 
+	private List<Node> _children;
 	public List<Node> Children
 	{
 		get
@@ -149,22 +160,10 @@ class Node
 
 			return _children;
 		}
-	}
-
-	public void AddItem( Node item )
-	{
-		if ( item is null )
-			return;
-
-		if ( !CanHaveChildren )
-			return;
-
-		if ( _children == null )
-		{
-			_children = new List<Node>();
+		set 
+		{ 
+			_children = value;
 		}
-
-		_children.Add( item );
 	}
 
 	public bool IsDescendantOf( Node other )
