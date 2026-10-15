@@ -1,7 +1,7 @@
 ﻿
 namespace ShaderGraphPlusPanelTest;
 
-public static class ShaderGraphPlusStyles
+public static class ShaderGraphPlusStyleSheets
 {
 
 	/// <summary>

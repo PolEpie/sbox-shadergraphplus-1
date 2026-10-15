@@ -23,10 +23,10 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 	{
 		AddClass( "editor-window" );
 
-		StyleSheet.Load( ShaderGraphPlusStyles.EditorScss );
-		StyleSheet.Load( ShaderGraphPlusStyles.GalleryScss );
+		StyleSheet.Load( ShaderGraphPlusStyleSheets.EditorScss );
+		StyleSheet.Load( ShaderGraphPlusStyleSheets.GalleryScss );
 
-		StyleSheet.AddInline( ShaderGraphPlusStyles.ShaderGraphPlusScss, "shadergraphplus_style" );
+		StyleSheet.AddInline( ShaderGraphPlusStyleSheets.ShaderGraphPlusScss, "shadergraphplus_style" );
 
 		Style.FlexDirection = FlexDirection.Column;
 

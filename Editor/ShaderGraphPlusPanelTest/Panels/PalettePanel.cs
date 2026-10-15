@@ -17,10 +17,9 @@ public sealed class PalettePanel : Panel
 	{
 		_isSubgraph = isSubgraph;
 
-		var panel = new Panel();
-		panel.AddClass( "editor-dock-pane" );
+		AddClass( ShaderGraphPlusCssClasses.EditorDockPane );
 
-		BuildToolbar( panel );
+		BuildToolbar();
 
 		_tree = new Sandbox.UI.TreeView<Node>();
 		_tree.AddClass( "demo-tree" );
@@ -29,30 +28,26 @@ public sealed class PalettePanel : Panel
 		_tree.CanExpand = treeNode => treeNode.CanHaveChildren;
 		_tree.GetHeight = treeNode => treeNode is CategoryNode ? 30 : Theme.RowHeight;
 		_tree.GetTooltip = treeNode => treeNode.ToolTip;
-		_tree.OnRow = BindRow;
+		_tree.OnRow = OnRow;
 		_tree.OnSelect = treeNode => SGPLogger.Info( $"selected {treeNode.Name}" );
 		_tree.OnActivate = treeNode => SGPLogger.Info( $"activated {treeNode.Name}" );
 		_tree.OnRename = ( treeNode, text ) => { treeNode.Name = text; SGPLogger.Info( $"renamed to {text}" ); };
 		_tree.CanDrag = treeNode => treeNode is not CategoryNode;
-		//_tree.OnItemDropped = Drop;
-		//_tree.OnContextMenu = OpenMenu;
 
-		panel.AddChild( _tree );
-
-		AddChild( panel );
+		AddChild( _tree );
 
 		UpdateTree();
 	}
 
-	void BindRow( Sandbox.UI.TreeRow row, Node node )
+	private void OnRow( Sandbox.UI.TreeRow row, Node node )
 	{
 		row.Text = node.Name;
 		row.IconName = node.Icon;
 	}
 
-	void BuildToolbar( Panel panel )
+	private void BuildToolbar()
 	{
-		var toolbar = panel.AddChild( new Toolbar() );
+		var toolbar = AddChild( new Toolbar() );
 		toolbar.AddClass( "panetools" );
 
 		_searchFilter = toolbar.AddChild( new TextInput( "Filter Nodes..", "search" ) );
