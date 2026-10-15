@@ -5,7 +5,7 @@ public static class ShaderGraphPlusStyleSheets
 {
 
 	/// <summary>
-	/// Found in : sbox\addons\tools\assets\styles
+	/// Found in : sbox\addons\editor\assets\styles
 	/// </summary>
 	public const string EditorScss = "/styles/editor.scss";
 
