@@ -210,11 +210,12 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 		SGPLogger.Info( $"Compile Graph" );
 	}
 
-	void UpdateTitle()
+	private void UpdateTitle()
 	{
 		WindowTitle.Text = $"Shader Graph Plus - untitled{(_dirty ? "*" : "")}";
 	}
-	void UpdateMaximizeIcon()
+
+	private void UpdateMaximizeIcon()
 	{
 		_maximizeIcon.Text = _window.IsMaximized ? "filter_none" : "crop_square";
 	}
