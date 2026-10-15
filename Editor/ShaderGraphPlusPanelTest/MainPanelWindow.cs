@@ -131,9 +131,29 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 		dockHost.Dock( "properties", "preview", DockPosition.Bottom, 0.55f );
 	}
 
+	private void PromptSave( Action action )
+	{
+		if ( !_dirty )
+		{
+			action?.Invoke();
+			return;
+		}
+
+		var confirm = new PopupWindow(
+			"Save Current Graph", "The open graph has unsaved changes. Would you like to save now?", "Cancel",
+			new Dictionary<string, Action>()
+			{
+				{ "No", () => action?.Invoke() },
+				{ "Yes", () => { if ( SaveInternal( false ) ) action?.Invoke(); } }
+			}
+		);
+
+		confirm.Show();
+	}
+
 	public void New()
 	{
-		CreateNew();
+		PromptSave( CreateNew );
 	}
 
 	public void CreateNew()
@@ -143,7 +163,18 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 
 	public void Open()
 	{
-		Open( "" );
+		var fd = new FileDialog( null )
+		{
+			Title = $"Open {FileType}",
+			DefaultSuffix = $".{FileExtension}"
+		};
+
+		fd.SetNameFilter( $"{FileType} ( *.{FileExtension})" );
+
+		if ( !fd.Execute() )
+			return;
+
+		PromptSave( () => Open( fd.SelectedFile ) );
 	}
 
 	public void Open( string path, bool addToPath = true )
@@ -208,6 +239,21 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 	private void Compile()
 	{
 		SGPLogger.Info( $"Compile Graph" );
+	}
+
+	private string GeneratePreviewCode()
+	{
+		return "";
+	}
+
+	private void SetDirty( bool evaluate = true )
+	{
+		_dirty = true;
+
+		UpdateTitle();
+
+		if ( evaluate )
+			GeneratePreviewCode();
 	}
 
 	private void UpdateTitle()
