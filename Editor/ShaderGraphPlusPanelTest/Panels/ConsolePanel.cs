@@ -36,6 +36,10 @@ public class ConsolePanel : Panel
 	const float RowHeight = 20.0f;
 	const int Overscan = 6;
 
+	// Detail pane limits, in layout units. The list always keeps MinListWidth.
+	const float MinDetailWidth = 200.0f;
+	const float MinListWidth = 240.0f;
+
 	public static int Count => buffer.Count;
 
 	/// <summary>
@@ -86,7 +90,11 @@ public class ConsolePanel : Panel
 
 	Panel scroll;
 	Panel spacer;
+	Panel body;
+	Panel detailSplitter;
 	Panel detailPanel;
+	Sandbox.UI.Label detailTitle;
+	Panel detailBody;
 	Panel suggestionList;
 	TextInput commandBox;
 
@@ -111,6 +119,7 @@ public class ConsolePanel : Panel
 	int builtTo = -1;
 	int builtCount = -1;
 	int seenLines;
+	bool resizingDetail;
 
 	public ConsolePanel()
 	{
@@ -120,10 +129,30 @@ public class ConsolePanel : Panel
 
 		BuildToolbar();
 
-		scroll = Add.Panel( "list" );
+		// List on the left, selected line's detail on the right - the dock is wide and short, so
+		// stacking them leaves the list a sliver
+		body = Add.Panel( "body" );
+
+		scroll = body.Add.Panel( "list" );
 		spacer = scroll.Add.Panel( "spacer" );
 
-		detailPanel = Add.Panel( "detail" );
+		detailSplitter = body.Add.Panel( "detail-splitter" );
+		detailSplitter.AddEventListener( "onmousedown", () =>
+		{
+			resizingDetail = true;
+			detailSplitter.SetClass( "dragging", true );
+		} );
+
+		detailPanel = body.Add.Panel( "detail" );
+		detailPanel.Style.Width = Length.Percent( 40 );
+
+		var header = detailPanel.Add.Panel( "detail-header" );
+		detailTitle = header.Add.Label( "", "detail-title" );
+		header.AddChild( new Sandbox.UI.Button( null, "close", "square", ClearSelection ) ).Tooltip = "Close details";
+
+		detailBody = detailPanel.Add.Panel( "detail-body" );
+
+		BuildDetail();
 
 		BuildCommandLine();
 
@@ -139,7 +168,7 @@ public class ConsolePanel : Panel
 		bar.AddButton( "Clear", "delete", () =>
 		{
 			ClearBuffer();
-			selected = null;
+			ClearSelection();
 			seenLines = 0;
 			Refilter();
 		} );
@@ -282,7 +311,7 @@ public class ConsolePanel : Panel
 		if ( command == "clear" )
 		{
 			ClearBuffer();
-			selected = null;
+			ClearSelection();
 			seenLines = 0;
 			Refilter();
 			return;
@@ -391,6 +420,13 @@ public class ConsolePanel : Panel
 
 	public override void Tick()
 	{
+		// Mouse-up only reaches the splitter if it's released over it, so end on losing :active instead
+		if ( resizingDetail && !detailSplitter.HasActive )
+		{
+			resizingDetail = false;
+			detailSplitter.SetClass( "dragging", false );
+		}
+
 		// New output arrives whether we're looking or not
 		if ( timeSinceChecked > 0.1f )
 		{
@@ -410,20 +446,47 @@ public class ConsolePanel : Panel
 		UpdateVisibleRows();
 	}
 
+	/// <summary>
+	/// While the splitter is held, size the detail pane so its left edge follows the mouse. Moves
+	/// go to the pressed splitter and bubble up to us.
+	/// </summary>
+	protected override void OnMouseMove( MousePanelEvent e )
+	{
+		base.OnMouseMove( e );
+
+		if ( !resizingDetail ) return;
+
+		var scale = body.ScaleFromScreen;
+		var bodyWidth = body.Box.Rect.Width * scale;
+		var width = bodyWidth - body.MousePosition.x * scale;
+
+		detailPanel.Style.Width = Math.Clamp( width, MinDetailWidth, MathF.Max( MinDetailWidth, bodyWidth - MinListWidth ) );
+	}
+
 	float ViewHeight => scroll.IsValid() ? scroll.Box.Rect.Height * scroll.ScaleFromScreen : 0;
+
+	/// <summary>
+	/// The list's scroll position in layout units, like <see cref="RowHeight"/> and <see cref="ViewHeight"/>.
+	/// <see cref="Panel.ScrollOffset"/> itself is in screen pixels, so mixing them breaks at any DPI scale but 1.
+	/// </summary>
+	float ScrollY
+	{
+		get => scroll.ScrollOffset.y * scroll.ScaleFromScreen;
+		set => scroll.ScrollOffset = new Vector2( 0, value * scroll.ScaleToScreen );
+	}
 
 	bool IsScrolledToBottom()
 	{
 		if ( !scroll.IsValid() ) return true;
 
-		return scroll.ScrollOffset.y >= (visible.Count * RowHeight) - ViewHeight - RowHeight;
+		return ScrollY >= (visible.Count * RowHeight) - ViewHeight - RowHeight;
 	}
 
 	void ScrollToBottom()
 	{
 		if ( !scroll.IsValid() ) return;
 
-		scroll.ScrollOffset = new Vector2( 0, MathF.Max( 0, visible.Count * RowHeight - ViewHeight ) );
+		ScrollY = MathF.Max( 0, visible.Count * RowHeight - ViewHeight );
 	}
 
 	/// <summary>
@@ -436,12 +499,12 @@ public class ConsolePanel : Panel
 		var height = ViewHeight;
 		if ( height < 1 ) return;
 
-		// The list resizes when the detail pane opens and closes, which can leave the scroll
+		// The list resizes when the dock or detail pane does, which can leave the scroll
 		// hanging past the end
 		var limit = MathF.Max( 0, visible.Count * RowHeight - height );
-		if ( scroll.ScrollOffset.y > limit ) scroll.ScrollOffset = new Vector2( 0, limit );
+		if ( ScrollY > limit ) ScrollY = limit;
 
-		var offset = scroll.ScrollOffset.y;
+		var offset = ScrollY;
 
 		var from = Math.Max( 0, (int)(offset / RowHeight) - Overscan );
 		var to = Math.Min( visible.Count - 1, (int)((offset + height) / RowHeight) + Overscan );
@@ -569,17 +632,23 @@ public class ConsolePanel : Panel
 
 	/// <summary>
 	/// The selected line in full, with its stack broken into rows that open the file when clicked.
+	/// The pane and its splitter only exist on screen while a line is selected.
 	/// </summary>
 	void BuildDetail()
 	{
-		detailPanel.DeleteChildren( true );
-		detailPanel.SetClass( "empty", selected is null );
+		detailBody.DeleteChildren( true );
 
-		if ( selected is null ) return;
+		var open = selected is not null;
+		detailPanel.Style.Display = open ? DisplayMode.Flex : DisplayMode.None;
+		detailSplitter.Style.Display = open ? DisplayMode.Flex : DisplayMode.None;
+
+		if ( !open ) return;
 
 		var log = selected.Log;
 
-		var message = detailPanel.Add.Label( log.Message?.TrimEnd() ?? "", "message" );
+		detailTitle.Text = $"{log.Logger}  {log.Time:HH:mm:ss}";
+
+		var message = detailBody.Add.Label( log.Message?.TrimEnd() ?? "", "message" );
 		message.AddEventListener( "onclick", () => EditorUtility.Clipboard.Copy( $"{log.Message}\n{log.Stack}" ) );
 
 		var stack = log.Stack;
@@ -597,11 +666,24 @@ public class ConsolePanel : Panel
 		}
 	}
 
+	/// <summary>
+	/// Deselect the line and hide the detail pane.
+	/// </summary>
+	void ClearSelection()
+	{
+		if ( rows.TryGetValue( selectedRow, out var row ) ) row.SetClass( "selected", false );
+
+		selected = null;
+		selectedRow = -1;
+
+		BuildDetail();
+	}
+
 	void AddStackRow( string line )
 	{
 		var match = StackLine.Match( line );
 
-		var row = detailPanel.Add.Panel( "stackrow" );
+		var row = detailBody.Add.Panel( "stackrow" );
 
 		if ( !match.Success )
 		{
