@@ -3,14 +3,15 @@
 namespace ShaderGraphPlusPanelTest;
 
 /// <summary>
-/// The node graph surface. Middle-drag pans, the wheel zooms around the cursor.
+/// The node graph surface. Middle-drag pans, the wheel zooms around the cursor, and palette
+/// rows dropped here become <see cref="GraphNodeCard"/>s at the cursor.
 /// </summary>
 public sealed class GraphViewPanel : CanvasPanel
 {
 	/// <summary>
-	/// Spacing of the minor grid lines, in canvas units.
+	/// Spacing of the minor grid lines, in canvas units. Nodes snap to it.
 	/// </summary>
-	private const float GridSize = 16f;
+	public const float GridSize = 16f;
 
 	/// <summary>
 	/// Every Nth minor line is drawn as a major line.
@@ -25,6 +26,16 @@ public sealed class GraphViewPanel : CanvasPanel
 	private static readonly Color MinorColor = Color.White.WithAlpha( 0.04f );
 	private static readonly Color MajorColor = Color.White.WithAlpha( 0.09f );
 
+	/// <summary>
+	/// The palette row being dragged over us, picked up from the bubbled ondragenter.
+	/// </summary>
+	private TreeRow _dragSource;
+
+	/// <summary>
+	/// See-through card showing where the dragged palette node will land.
+	/// </summary>
+	private GraphNodeCard _dropPreview;
+
 	public GraphViewPanel() : base()
 	{
 		AddClass( ShaderGraphPlusCssClasses.EditorDockPane );
@@ -37,6 +48,96 @@ public sealed class GraphViewPanel : CanvasPanel
 	}
 
 	public void ResetView() => SetView( new Vector2( -500, -300 ), new Vector2( 500, 300 ) );
+
+	/// <summary>
+	/// Place a node card with its top left at <paramref name="position"/>, snapped to the grid.
+	/// </summary>
+	public GraphNodeCard AddNode( TypeDescription type, Vector2 position )
+	{
+		return Content.AddChild( new GraphNodeCard( type, SnapToGrid( position ) ) );
+	}
+
+	/// <summary>
+	/// Round a canvas position to the nearest grid intersection.
+	/// </summary>
+	public static Vector2 SnapToGrid( Vector2 position )
+	{
+		return new Vector2( MathF.Round( position.x / GridSize ), MathF.Round( position.y / GridSize ) ) * GridSize;
+	}
+
+	/// <summary>
+	/// The shader node type behind a dragged palette row, or null for categories and anything else.
+	/// </summary>
+	private static TypeDescription PaletteType( Panel panel )
+	{
+		if ( panel is not TreeRow { RowIndex: >= 0, Tree: TreeView<Node> palette } row ) return null;
+		return palette.GetRowItem( row.RowIndex ).Type;
+	}
+
+	protected override void OnDragEnter( PanelEvent e )
+	{
+		base.OnDragEnter( e );
+
+		if ( e.Target is TreeRow row && PaletteType( row ) is not null )
+			_dragSource = row;
+	}
+
+	/// <summary>
+	/// A palette row was released over the graph: <paramref name="e"/>'s target is the dragged row.
+	/// </summary>
+	protected override void OnDrop( PanelEvent e )
+	{
+		// DropEvent is files/text from outside the app, not a panel drag
+		if ( e is DropEvent ) return;
+
+		var type = PaletteType( e.Target );
+		if ( type is null ) return;
+
+		ClearDropPreview();
+		AddNode( type, ScreenToCanvas( MousePosition ) );
+		e.StopPropagation();
+	}
+
+	public override void Tick()
+	{
+		base.Tick();
+		UpdateDropPreview();
+	}
+
+	/// <summary>
+	/// Keep the preview under the cursor, snapped like <see cref="AddNode"/> so the node lands exactly
+	/// where its preview was. Gone as soon as the drag ends or leaves the graph.
+	/// </summary>
+	private void UpdateDropPreview()
+	{
+		if ( _dragSource is not null && (!_dragSource.IsValid() || _dragSource.Tree is not { IsDragging: true }) )
+			_dragSource = null;
+
+		var type = _dragSource is not null && Viewport.IsInside( MousePosition ) ? PaletteType( _dragSource ) : null;
+		if ( type is null )
+		{
+			ClearDropPreview();
+			return;
+		}
+
+		var position = SnapToGrid( ScreenToCanvas( MousePosition ) );
+
+		if ( _dropPreview is null || _dropPreview.Type != type )
+		{
+			ClearDropPreview();
+			_dropPreview = Content.AddChild( new GraphNodeCard( type, position, isPreview: true ) );
+		}
+		else
+		{
+			_dropPreview.MoveTo( position );
+		}
+	}
+
+	private void ClearDropPreview()
+	{
+		_dropPreview?.Delete( true );
+		_dropPreview = null;
+	}
 
 	public override void OnDraw( Painter painter )
 	{

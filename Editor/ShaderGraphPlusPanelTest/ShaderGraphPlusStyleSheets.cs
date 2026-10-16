@@ -1,4 +1,4 @@
-﻿
+
 namespace ShaderGraphPlusPanelTest;
 
 public static class ShaderGraphPlusStyleSheets
@@ -17,8 +17,15 @@ public static class ShaderGraphPlusStyleSheets
 	public const string ShaderGraphPlusScss = @"
 		ShaderGraphPlusPanel > .main-toolbar { flex-shrink: 0; height: 40px; padding: 0px 8px; border-bottom: 1px solid #26282e; }
 		ShaderGraphPlusPanel .status { color: #6e737c; font-size: 11px; align-self: center; }
-
+		
 		.sg-graph { background-color: #1b1d22; }
+		
+		.sg-node { position: absolute; flex-direction: column; min-width: 160px; min-height: 48px; background-color: #25282f; border: 1px solid #3a3e47; border-radius: 6px; }
+		.sg-node > .header { flex-direction: row; align-items: center; gap: 6px; height: 28px; padding: 0px 10px; background-color: #323743; border-radius: 6px 6px 0px 0px; cursor: move; }
+		.sg-node > .header > * { pointer-events: none; }
+		.sg-node > .header > .icon { font-size: 15px; color: #8a8f98; }
+		.sg-node > .header > .title { font-size: 12px; font-weight: 600; white-space: nowrap; }
+		.sg-node.preview { opacity: 0.45; border-color: #4b8bf5; }
 		
 		.sg-list { flex-direction: column; flex-grow: 1; padding: 4px 0px; }
 		.sg-list .category { padding: 8px 10px 4px 10px; color: #8a8f98; font-size: 11px; font-weight: 600; text-transform: uppercase; }
