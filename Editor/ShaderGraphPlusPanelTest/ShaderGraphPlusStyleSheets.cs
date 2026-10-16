@@ -17,6 +17,8 @@ public static class ShaderGraphPlusStyleSheets
 	public const string ShaderGraphPlusScss = @"
 		ShaderGraphPlusPanel > .main-toolbar { flex-shrink: 0; height: 40px; padding: 0px 8px; border-bottom: 1px solid #26282e; }
 		ShaderGraphPlusPanel .status { color: #6e737c; font-size: 11px; align-self: center; }
+
+		.sg-graph { background-color: #1b1d22; }
 		
 		.sg-list { flex-direction: column; flex-grow: 1; padding: 4px 0px; }
 		.sg-list .category { padding: 8px 10px 4px 10px; color: #8a8f98; font-size: 11px; font-weight: 600; text-transform: uppercase; }
