@@ -90,6 +90,8 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 		Option( edit, "Paste", "Ctrl+V", PasteSelection );
 		Option( edit, "Select All", "Ctrl+A", SelectAll );
 
+		var view = menus.AddMenu( "View" );
+
 		bar.Add.Panel( "grow" );
 
 		// Centred over the bar, so the menus on the left don't push it off centre
