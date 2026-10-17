@@ -235,6 +235,8 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	public void Open( string path, bool addToPath = true )
 	{
 		SGPLogger.Info( $"Open Graph" );
+
+		_preview.LoadSettings( new() );
 	}
 
 	public void SaveAs()
@@ -309,6 +311,22 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		if ( evaluate )
 			GeneratePreviewCode();
+	}
+
+	// For Development only
+	[EditorEvent.Hotload]
+	private void OnHotload()
+	{
+		BuildMenuBar();
+		CreateToolBar();
+		CreateUI();
+
+		Compile();
+
+		//_preview.LoadSettings( _graph.PreviewSettings );
+		_preview.LoadSettings( new() );
+
+		Log.Info( "ShaderGraphPlus hotloaded!" );
 	}
 
 	private void UpdateTitle()

@@ -11,4 +11,9 @@ public sealed class PreviewPanel : Panel
 		AddClass( "sg-preview" );
 		Add.Panel( "ball" );
 	}
+
+	public void LoadSettings( PreviewSettings settings )
+	{
+		SGPLogger.Info( $"TODO : Load Preview Settings" );
+	}
 }
