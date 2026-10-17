@@ -1,9 +1,8 @@
 ﻿using Editor;
+using NodeEditorPlusTest;
 using Sandbox.UI;
 using Sandbox.UI.Construct;
 using ShaderGraphPlus;
-
-using NodeEditorPlusTest;
 
 namespace ShaderGraphPlusPanelTest;
 
@@ -72,44 +71,45 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		var file = menus.AddMenu( "File" );
 
-		Option( file, "New", "Ctrl+N", New );
-		Option( file, "Open", "Ctrl+O", Open );
-		Option( file, "Save", "Ctrl+S", Save );
-		Option( file, "Save As...", "Ctrl+Shift+S", SaveAs );
+		Option( file, "New", "note_add", "Ctrl+N", New );
+		Option( file, "Open", "file_open", "Ctrl+O", Open );
+		Option( file, "Save", "save", "Ctrl+S", Save );
+		Option( file, "Save As...", "save_as", "Ctrl+Shift+S", SaveAs );
 
 		file.AddSeparator();
 
-		Option( file, "Quit", "Alt+F4", Quit );
+		Option( file, "Quit", "logout", "Alt+F4", Quit );
 
 		var edit = menus.AddMenu( "Edit" );
 
-		Option( edit, "Undo", "Ctrl+Z", Undo );
-		Option( edit, "Redo", "Ctrl+Y", Redo );
+		Option( edit, "Undo", "undo", "Ctrl+Z", Undo );
+		Option( edit, "Redo", "redo","Ctrl+Y", Redo );
 
 		edit.AddSeparator();
 
-		Option( edit, "Cut", "Ctrl+X", CutSelection );
-		Option( edit, "Copy", "Ctrl+C", CopySelection );
-		Option( edit, "Paste", "Ctrl+V", PasteSelection );
-		Option( edit, "Select All", "Ctrl+A", SelectAll );
+		Option( edit, "Cut", "content_cut", "Ctrl+X", CutSelection );
+		Option( edit, "Copy", "content_copy", "Ctrl+C", CopySelection );
+		Option( edit, "Paste", "content_paste", "Ctrl+V", PasteSelection );
+		Option( edit, "Select All", "select_all", "Ctrl+A", SelectAll );
 
 		var view = menus.AddMenu( "View" );
-		Option( view, "Graph", action: () => ShowDock( "graph" ) );
-		Option( view, "Palette", action: () => ShowDock( "palette" ) );
-		Option( view, "Blackboard", action: () => ShowDock( "blackboard" ) );
-		Option( view, "Preview", action: () => ShowDock( "preview" ) );
-		Option( view, "Properties", action: () => ShowDock( "properties" ) );
-		Option( view, "Console", action: () => ShowDock( "console" ) );
+
+		Option( view, "Graph", "account_tree", action: () => ShowDock( "graph" ) );
+		Option( view, "Palette", "palette", action: () => ShowDock( "palette" ) );
+		Option( view, "Blackboard", "format_list_bulleted", action: () => ShowDock( "blackboard" ) );
+		Option( view, "Preview", "photo", action: () => ShowDock( "preview" ) );
+		Option( view, "Properties", "tune", action: () => ShowDock( "properties" ) );
+		Option( view, "Console", "text_snippet", action: () => ShowDock( "console" ) );
 
 		view.AddSeparator();
 
-		Option( view, "Save Layout", action: () => _savedLayout = DockWindows.State );
-		Option( view, "Restore Layout", action: () => DockWindows.RestoreState( _savedLayout ) );
-		Option( view, "Reset Layout", action: () => DockWindows.RestoreState( _defaultLayout ) );
+		Option( view, "Save Layout", "playlist_add", action: () => _savedLayout = DockWindows.State );
+		Option( view, "Restore Layout", "playlist_add_check", action: () => DockWindows.RestoreState( _savedLayout ) );
+		Option( view, "Reset Layout", "restart_alt", action: () => DockWindows.RestoreState( _defaultLayout ) );
 
 		view.AddSeparator();
 
-		Option( view, "Full Screen", "F11", () => { _window.ToggleMaximized(); UpdateMaximizeIcon(); } );
+		Option( view, "Full Screen", "F11", "", () => { _window.ToggleMaximized(); UpdateMaximizeIcon(); } );
 
 		bar.Add.Panel( "grow" );
 

@@ -78,9 +78,9 @@ public class PanelDockWindow : Panel
 	/// <summary>
 	/// A row with a shortcut shown beside it. Rows with nothing to do are just there to look at.
 	/// </summary>
-	protected static Sandbox.UI.Menu Option( Sandbox.UI.Menu menu, string text, string shortcut = null, Action action = null )
+	protected static Sandbox.UI.Menu Option( Sandbox.UI.Menu menu, string text, string icon = "", string shortcut = null, Action action = null )
 	{
-		var option = menu.AddOption( text, action );
+		var option = menu.AddOption( text, icon, action );
 		option.Shortcut = shortcut;
 		return option;
 	}
