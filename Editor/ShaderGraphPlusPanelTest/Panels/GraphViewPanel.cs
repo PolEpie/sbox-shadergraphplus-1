@@ -142,7 +142,9 @@ public sealed class GraphViewPanel : CanvasPanel
 	public override void OnDraw( Painter painter )
 	{
 		var viewport = Viewport;
-		if ( viewport.Width <= 0 || viewport.Height <= 0 ) return;
+
+		if ( viewport.Width <= 0 || viewport.Height <= 0 )
+			return;
 
 		using var scope = painter.Scope();
 		painter.Clip( viewport );
@@ -152,10 +154,19 @@ public sealed class GraphViewPanel : CanvasPanel
 		var pixelsPerUnit = viewport.Width / (max.x - min.x);
 
 		var step = GridSize;
-		while ( step * pixelsPerUnit < MinLineSpacingPixels ) step *= 2;
+		
+		while ( step * pixelsPerUnit < MinLineSpacingPixels )
+		{
+			step *= 2;
+		}
+
 		var major = Math.Max( step, GridSize * MajorEvery );
 
-		if ( step < major ) DrawLines( painter, min, max, step, major, MinorColor );
+		if ( step < major )
+		{
+			DrawLines( painter, min, max, step, major, MinorColor );
+		}
+
 		DrawLines( painter, min, max, major, 0, MajorColor );
 	}
 
@@ -169,13 +180,17 @@ public sealed class GraphViewPanel : CanvasPanel
 
 		for ( var x = MathF.Ceiling( min.x / step ) * step; x <= max.x; x += step )
 		{
-			if ( skipEvery > 0 && IsMultiple( x, skipEvery ) ) continue;
+			if ( skipEvery > 0 && IsMultiple( x, skipEvery ) )
+				continue;
+
 			painter.Line( CanvasToScreen( new Vector2( x, min.y ) ), CanvasToScreen( new Vector2( x, max.y ) ) );
 		}
 
 		for ( var y = MathF.Ceiling( min.y / step ) * step; y <= max.y; y += step )
 		{
-			if ( skipEvery > 0 && IsMultiple( y, skipEvery ) ) continue;
+			if ( skipEvery > 0 && IsMultiple( y, skipEvery ) )
+				continue;
+
 			painter.Line( CanvasToScreen( new Vector2( min.x, y ) ), CanvasToScreen( new Vector2( max.x, y ) ) );
 		}
 	}
