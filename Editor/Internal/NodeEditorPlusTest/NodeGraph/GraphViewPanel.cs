@@ -60,11 +60,6 @@ public class GraphViewPanel : CanvasPanel
 		return Content.AddChild( new GraphNodeCard( type, position.SnapToGrid( GridSize ) ) );
 	}
 
-	//public GraphNodeCard CreateNewNode( TypeDescription type, Vector2 position )
-	//{
-	//	return Content.AddChild( new GraphNodeCard( type, SnapToGrid( position ) ) );
-	//}
-
 	public GraphNodeCard CreateNewNode( INodeType type, Vector2 position )
 	{
 		return CreateNewNode( type, position.SnapToGrid( GridSize ), node =>
