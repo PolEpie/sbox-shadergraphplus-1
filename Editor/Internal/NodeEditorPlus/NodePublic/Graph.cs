@@ -66,6 +66,7 @@ public interface INodeType
 	bool TryGetInput( Type valueType, [NotNullWhen( true )] out string? name );
 	bool TryGetOutput( Type valueType, [NotNullWhen( true )] out string? name );
 	IGraphNode CreateNode( INodeGraph graph );
+	TypeDescription CreateNodeTest();
 
 	public bool Matches( NodeQuery query ) => GetScore( query ) is not null;
 	public int? GetScore( NodeQuery query ) => DefaultGetScore( this, query );

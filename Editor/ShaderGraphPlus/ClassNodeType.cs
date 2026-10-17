@@ -54,6 +54,15 @@ public class ClassNodeType : INodeType
 
 		return node;
 	}
+
+	public virtual TypeDescription CreateNodeTest() // CreateNodeTest( INodeGraph graph )
+	{
+		//var node = Type.Create<BaseNodePlus>();
+
+		SGPLogger.Info( $"TODO Panel Version INodeType.CreateNode" );
+
+		return Type;
+	}
 }
 
 public sealed class SubgraphNodeType : ClassNodeType

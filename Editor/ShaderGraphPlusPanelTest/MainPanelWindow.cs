@@ -13,6 +13,8 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	public string FileType => ShaderGraphPlusGlobals.AssetTypeName;
 	public string FileExtension => ShaderGraphPlusGlobals.AssetTypeExtension;
 
+	private GraphViewPanel _graphView;
+
 	[Menu( "Editor", "Shader Graph Plus/NewEditorTest", "schema" )]
 	public static void OpenNewEditorTest()
 	{
@@ -131,7 +133,27 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		ConsolePanel.Hook();
 
-		DockHost.Register( "graph", "Graph", () => new GraphViewPanel(), canClose: false, icon: "account_tree" );
+		_graphView = new GraphViewPanel();
+
+		var nodeTypes = EditorTypeLibrary.GetTypes<ShaderNodePlus>()
+			.Where( x => !x.IsAbstract && !x.HasAttribute<HideAttribute>() ).OrderBy( x => x.Name );
+
+		foreach ( var type in nodeTypes )
+		{
+			_graphView.AddNodeType( type );
+		}
+
+		var subgraphs = AssetSystem.All.Where( x => x.Path.EndsWith( $".{ShaderGraphPlusGlobals.SubgraphAssetTypeExtension}", StringComparison.OrdinalIgnoreCase ) );
+		foreach ( var subgraph in subgraphs )
+		{
+			// Skip any _c compiled subgraph files.
+			if ( subgraph.CanRecompile )
+			{
+				_graphView.AddNodeType( subgraph.Path );
+			}
+		}
+
+		DockHost.Register( "graph", "Graph", _graphView, canClose: false, icon: "account_tree" );
 		DockHost.Register( "palette", "Palette", () => new PalettePanel( false ), icon: "palette" );
 		DockHost.Register( "blackboard", "Blackboard", () => new BlackboardPanel(), icon: "format_list_bulleted" );
 
@@ -180,6 +202,11 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	public void CreateNew()
 	{
 		SGPLogger.Info( $"New Graph" );
+
+		if ( !IsSubgraph )
+		{
+			var result = _graphView.CreateNewNode( _graphView.FindNodeType( typeof( Result ) ), 0 );
+		}
 	}
 
 	public void Open()

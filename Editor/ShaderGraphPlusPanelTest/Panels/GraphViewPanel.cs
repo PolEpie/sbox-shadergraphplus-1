@@ -1,4 +1,7 @@
-﻿using Sandbox.UI;
+﻿using Editor.NodeEditor;
+using Sandbox.UI;
+using ShaderGraphPlus;
+using static Sandbox.VertexLayout;
 
 namespace ShaderGraphPlusPanelTest;
 
@@ -36,6 +39,8 @@ public sealed class GraphViewPanel : CanvasPanel
 	/// </summary>
 	private GraphNodeCard _dropPreview;
 
+	private readonly Dictionary<string, INodeType> AvailableNodes = new( StringComparer.OrdinalIgnoreCase );
+
 	public GraphViewPanel() : base()
 	{
 		AddClass( ShaderGraphPlusCssClasses.EditorDockPane );
@@ -47,6 +52,34 @@ public sealed class GraphViewPanel : CanvasPanel
 		ResetView();
 	}
 
+	public void AddNodeType<T>()
+	where T : BaseNodePlus
+	{
+		AddNodeType( EditorTypeLibrary.GetType<T>() );
+	}
+
+	public void AddNodeType( TypeDescription type )
+	{
+		var nodeType = new ClassNodeType( type );
+
+		AvailableNodes.TryAdd( nodeType.Identifier, nodeType );
+	}
+
+	public void AddNodeType( string subgraphPath )
+	{
+		var subgraphTxt = Editor.FileSystem.Content.ReadAllText( subgraphPath );
+		var subgraph = JsonSerializer.Deserialize<ShaderGraphPlus.ShaderGraphPlus>( subgraphTxt, ShaderGraphPlus.ShaderGraphPlus.SerializerOptions() );
+		if ( !subgraph.AddToNodeLibrary ) return;
+		var nodeType = new SubgraphNodeType( subgraphPath, EditorTypeLibrary.GetType<SubgraphNode>() );
+		nodeType.SetDisplayInfo( subgraph );
+		AvailableNodes.TryAdd( nodeType.Identifier, nodeType );
+	}
+
+	public INodeType FindNodeType( Type type )
+	{
+		return AvailableNodes.TryGetValue( type.FullName!, out var nodeType ) ? nodeType : null;
+	}
+
 	public void ResetView() => SetView( new Vector2( -500, -300 ), new Vector2( 500, 300 ) );
 
 	/// <summary>
@@ -55,6 +88,27 @@ public sealed class GraphViewPanel : CanvasPanel
 	public GraphNodeCard AddNode( TypeDescription type, Vector2 position )
 	{
 		return Content.AddChild( new GraphNodeCard( type, SnapToGrid( position ) ) );
+	}
+
+	//public GraphNodeCard CreateNewNode( TypeDescription type, Vector2 position )
+	//{
+	//	return Content.AddChild( new GraphNodeCard( type, SnapToGrid( position ) ) );
+	//}
+
+	public GraphNodeCard CreateNewNode( INodeType type, Vector2 position )
+	{
+		return CreateNewNode( type, position.SnapToGrid( GridSize ), node =>
+			node.Position = position.SnapToGrid( GridSize ) );
+	}
+
+	public GraphNodeCard CreateNewNode( INodeType type, Vector2 position, Action<IGraphNode> onCreated = null )
+	{
+		if ( type == null )
+			return null;
+
+		var typeDescription = type.CreateNodeTest();
+
+		return AddNode( typeDescription, position );
 	}
 
 	/// <summary>
