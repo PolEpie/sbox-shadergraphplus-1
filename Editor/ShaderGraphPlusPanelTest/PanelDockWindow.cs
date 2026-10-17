@@ -75,7 +75,6 @@ public class PanelDockWindow : Panel
 		base.OnDeleted();
 	}
 
-
 	/// <summary>
 	/// A row with a shortcut shown beside it. Rows with nothing to do are just there to look at.
 	/// </summary>

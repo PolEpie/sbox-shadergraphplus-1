@@ -26,7 +26,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		StyleSheet.AddInline( ShaderGraphPlusStyleSheets.ShaderGraphPlusScss, "shadergraphplus_style" );
 
 		Style.FlexDirection = FlexDirection.Column;
-		
+
 		BuildMenuBar();
 		CreateToolBar();
 		CreateUI();
@@ -94,13 +94,13 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		Option( view, "Console", action: () => ShowDock( "console" ) );
 
 		view.AddSeparator();
-		
+
 		Option( view, "Save Layout", action: () => _savedLayout = DockWindows.State );
 		Option( view, "Restore Layout", action: () => DockWindows.RestoreState( _savedLayout ) );
 		Option( view, "Reset Layout", action: () => DockWindows.RestoreState( _defaultLayout ) );
-		
+
 		view.AddSeparator();
-		
+
 		Option( view, "Full Screen", "F11", () => { _window.ToggleMaximized(); UpdateMaximizeIcon(); } );
 
 		bar.Add.Panel( "grow" );

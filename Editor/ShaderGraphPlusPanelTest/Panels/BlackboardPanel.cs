@@ -21,7 +21,7 @@ public sealed class BlackboardPanel : Panel
 		_searchFilter = toolbar.AddChild( new TextInput( "Filter..", "search" ) );
 		_searchFilter.OnChange = ( value ) =>
 		{
-			
+
 		};
 
 		var addButton = toolbar.AddChild( new Button( "", "add" ) );
