@@ -17,6 +17,9 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 	private ShaderGraphPlusViewPanel _graphView;
 	private PropertiesPanel _properties;
+	private PalettePanel _palette;
+	private BlackboardPanel _blackboard;
+	private PreviewPanel _preview;
 
 	[Menu( "Editor", "Shader Graph Plus/NewEditorTest", "schema" )]
 	public static void OpenNewEditorTest()
@@ -135,6 +138,9 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		_graphView = new ShaderGraphPlusViewPanel();
 		_properties = new PropertiesPanel();
+		_palette = new PalettePanel( false );
+		_blackboard = new BlackboardPanel();
+		_preview = new PreviewPanel();
 
 		var nodeTypes = EditorTypeLibrary.GetTypes<ShaderNodePlus>()
 			.Where( x => !x.IsAbstract && !x.HasAttribute<HideAttribute>() ).OrderBy( x => x.Name );
@@ -155,10 +161,10 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		}
 
 		DockHost.Register( "graph", "Graph", _graphView, canClose: false, icon: "account_tree" );
-		DockHost.Register( "palette", "Palette", () => new PalettePanel( false ), icon: "palette" );
-		DockHost.Register( "blackboard", "Blackboard", () => new BlackboardPanel(), icon: "format_list_bulleted" );
+		DockHost.Register( "palette", "Palette", _palette, icon: "palette" );
+		DockHost.Register( "blackboard", "Blackboard", _blackboard, icon: "format_list_bulleted" );
 
-		DockHost.Register( "preview", "Preview", () => new PreviewPanel(), icon: "photo" );
+		DockHost.Register( "preview", "Preview", _preview, icon: "photo" );
 		DockHost.Register( "properties", "Properties", _properties, icon: "tune" );
 		DockHost.Register( "console", "Console", () => new ConsolePanel(), icon: "text_snippet" );
 
