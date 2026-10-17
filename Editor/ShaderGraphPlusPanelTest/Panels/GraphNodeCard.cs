@@ -41,7 +41,7 @@ public sealed class GraphNodeCard : Panel
 		{
 			AddClass( "preview" );
 			Style.PointerEvents = PointerEvents.None;
-			
+
 			// Handle forces PointerEvents.All inline on itself, so override it there too
 			_header.Style.PointerEvents = PointerEvents.None;
 			_header.DragEnabled = false;

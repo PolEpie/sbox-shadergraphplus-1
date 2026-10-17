@@ -89,12 +89,12 @@ public sealed class GraphViewPanel : CanvasPanel
 	{
 		// DropEvent is files/text from outside the app, not a panel drag
 		if ( e is DropEvent ) return;
-		
+
 		var type = PaletteType( e.Target );
 		if ( type is null ) return;
 
 		ClearDropPreview();
-	
+
 		AddNode( type, ScreenToCanvas( MousePosition ) );
 		e.StopPropagation();
 	}
@@ -155,7 +155,7 @@ public sealed class GraphViewPanel : CanvasPanel
 		var pixelsPerUnit = viewport.Width / (max.x - min.x);
 
 		var step = GridSize;
-		
+
 		while ( step * pixelsPerUnit < MinLineSpacingPixels )
 		{
 			step *= 2;
