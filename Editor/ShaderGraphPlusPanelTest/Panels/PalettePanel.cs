@@ -22,7 +22,7 @@ public sealed class PalettePanel : Panel
 		BuildToolbar();
 
 		_tree = new Sandbox.UI.TreeView<Node>();
-		_tree.AddClass( "demo-tree" );
+		_tree.AddClass( "palette-tree" );
 		_tree.GetChildren = treeNode => treeNode.Children;
 		_tree.GetParent = treeNode => treeNode.Parent;
 		_tree.CanExpand = treeNode => treeNode.CanHaveChildren;
