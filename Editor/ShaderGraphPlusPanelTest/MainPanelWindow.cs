@@ -281,21 +281,4 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	{
 		WindowTitle.Text = $"Shader Graph Plus - untitled{(_dirty ? "*" : "")}";
 	}
-
-	/// <summary>
-	/// A row with a shortcut shown beside it. Rows with nothing to do are just there to look at.
-	/// </summary>
-	static Sandbox.UI.Menu Option( Sandbox.UI.Menu menu, string text, string shortcut = null, Action action = null )
-	{
-		var option = menu.AddOption( text, action );
-		option.Shortcut = shortcut;
-		return option;
-	}
-
-	Sandbox.UI.Label WindowButton( Panel parent, string icon, string classname, Action onClick )
-	{
-		var button = parent.Clickable( "windowbutton window-nodrag", onClick );
-		if ( classname is not null ) button.AddClass( classname );
-		return button.Icon( icon );
-	}
 }
