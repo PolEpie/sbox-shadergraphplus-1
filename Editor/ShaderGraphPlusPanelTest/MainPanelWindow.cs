@@ -16,6 +16,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	public string FileExtension => ShaderGraphPlusGlobals.AssetTypeExtension;
 
 	private ShaderGraphPlusViewPanel _graphView;
+	private PropertiesPanel _properties;
 
 	[Menu( "Editor", "Shader Graph Plus/NewEditorTest", "schema" )]
 	public static void OpenNewEditorTest()
@@ -130,12 +131,10 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	{
 		base.CreateUI();
 
-		var properties = new Panel();
-		properties.AddClass( "sg-props" );
-
 		ConsolePanel.Hook();
 
 		_graphView = new ShaderGraphPlusViewPanel();
+		_properties = new PropertiesPanel();
 
 		var nodeTypes = EditorTypeLibrary.GetTypes<ShaderNodePlus>()
 			.Where( x => !x.IsAbstract && !x.HasAttribute<HideAttribute>() ).OrderBy( x => x.Name );
@@ -160,7 +159,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		DockHost.Register( "blackboard", "Blackboard", () => new BlackboardPanel(), icon: "format_list_bulleted" );
 
 		DockHost.Register( "preview", "Preview", () => new PreviewPanel(), icon: "photo" );
-		DockHost.Register( "properties", "Properties", properties, icon: "tune" );
+		DockHost.Register( "properties", "Properties", _properties, icon: "tune" );
 		DockHost.Register( "console", "Console", () => new ConsolePanel(), icon: "text_snippet" );
 
 		DockHost.Dock( "graph" );
