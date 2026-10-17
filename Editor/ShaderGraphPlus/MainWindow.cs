@@ -1935,7 +1935,7 @@ public class MainWindow : DockWindow
 		CreateUI();
 		Compile();
 
-		_preview3D.LoadSettings( _graph.PreviewSettings );
+		_preview.LoadSettings( _graph.PreviewSettings );
 	}
 	*/
 
