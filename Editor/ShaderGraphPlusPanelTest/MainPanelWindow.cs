@@ -9,6 +9,12 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 {
 	private bool _dirty = false;
 
+	private DockHost _dockHost;
+	private PanelDockWindows _dockWindows;
+	private string _defaultLayout;
+	private string _savedLayout;
+	private readonly List<RootPanel> floatingRoots = new();
+
 	public bool IsSubgraph => false;
 	public string FileType => ShaderGraphPlusGlobals.AssetTypeName;
 	public string FileExtension => ShaderGraphPlusGlobals.AssetTypeExtension;
@@ -91,6 +97,22 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 		Option( edit, "Select All", "Ctrl+A", SelectAll );
 
 		var view = menus.AddMenu( "View" );
+		Option( view, "Graph", action: () => ShowDock( "graph" ) );
+		Option( view, "Palette", action: () => ShowDock( "palette" ) );
+		Option( view, "Blackboard", action: () => ShowDock( "blackboard" ) );
+		Option( view, "Preview", action: () => ShowDock( "preview" ) );
+		Option( view, "Properties", action: () => ShowDock( "properties" ) );
+		Option( view, "Console", action: () => ShowDock( "console" ) );
+
+		view.AddSeparator();
+		
+		Option( view, "Save Layout", action: () => _savedLayout = _dockWindows.State );
+		Option( view, "Restore Layout", action: () => _dockWindows.RestoreState( _savedLayout ) );
+		Option( view, "Reset Layout", action: () => _dockWindows.RestoreState( _defaultLayout ) );
+		
+		view.AddSeparator();
+		
+		Option( view, "Full Screen", "F11", () => { _window.ToggleMaximized(); UpdateMaximizeIcon(); } );
 
 		bar.Add.Panel( "grow" );
 
@@ -110,6 +132,31 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 
 		UpdateTitle();
 	}
+	void ShowDock( string id )
+	{
+		var host = _dockHost.Find( id ) is not null ? _dockHost : floatingRoots
+			.Where( x => x.IsValid )
+			.SelectMany( x => x.Descendants.OfType<DockHost>() )
+			.FirstOrDefault( x => x.Find( id ) is not null );
+		if ( host is null ) return;
+		if ( !host.IsOpen( id ) ) host.Dock( id );
+		host.Activate( id );
+		PanelWindow.FromPanel( host )?.Focus();
+	}
+
+	void ConfigureFloatingWindow( RootPanel root )
+	{
+		root.AddClass( "mock-editor-surface" );
+		root.AddClass( "editor-window" );
+		root.StyleSheet.Load( "/styles/gallery.scss" );
+		floatingRoots.Add( root );
+	
+
+		// A floated tool no longer bubbles keys through EditorWindow.
+		var host = root.Children.OfType<DockHost>().Single();
+		var shortcuts = root.AddChild( new FloatingShortcuts( this ) );
+		host.Parent = shortcuts;
+	}
 
 	private void CreateUI()
 	{
@@ -118,22 +165,28 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 
 		ConsolePanel.Hook();
 
-		var dockHost = AddChild( new DockHost() );
-		
-		dockHost.Register( "graph", "Graph", () => new GraphViewPanel(), canClose: false, icon: "account_tree" );
-		dockHost.Register( "palette", "Palette", () => new PalettePanel( false ), icon: "palette" );
-		dockHost.Register( "blackboard", "Blackboard", () => new BlackboardPanel(), icon: "format_list_bulleted" );
+		_dockHost = AddChild( new DockHost() );
+		_dockWindows = new PanelDockWindows( _dockHost ) { ConfigureWindow = ConfigureFloatingWindow };
 
-		dockHost.Register( "preview", "Preview", () => new PreviewPanel(), icon: "photo" );
-		dockHost.Register( "properties", "Properties", properties, icon: "tune" );
-		dockHost.Register( "console", "Console", () => new ConsolePanel(), icon: "text_snippet" );
+		_dockHost.Register( "graph", "Graph", () => new GraphViewPanel(), canClose: false, icon: "account_tree" );
+		_dockHost.Register( "palette", "Palette", () => new PalettePanel( false ), icon: "palette" );
+		_dockHost.Register( "blackboard", "Blackboard", () => new BlackboardPanel(), icon: "format_list_bulleted" );
 
-		dockHost.Dock( "graph" );
-		dockHost.Dock( "palette", position: DockPosition.Left, fraction: 0.24f );
-		dockHost.Dock( "blackboard", "palette", position: DockPosition.Center, fraction: 0.18f );
-		dockHost.Dock( "preview", position: DockPosition.Right, fraction: 0.26f );
-		dockHost.Dock( "console", position: DockPosition.Bottom, fraction: 0.26f );
-		dockHost.Dock( "properties", "preview", DockPosition.Bottom, 0.55f );
+		_dockHost.Register( "preview", "Preview", () => new PreviewPanel(), icon: "photo" );
+		_dockHost.Register( "properties", "Properties", properties, icon: "tune" );
+		_dockHost.Register( "console", "Console", () => new ConsolePanel(), icon: "text_snippet" );
+
+		_dockHost.Dock( "graph" );
+		_dockHost.Dock( "palette", position: DockPosition.Left, fraction: 0.24f );
+		_dockHost.Dock( "blackboard", "palette", position: DockPosition.Center, fraction: 0.18f );
+		_dockHost.Dock( "preview", position: DockPosition.Right, fraction: 0.26f );
+		_dockHost.Dock( "console", position: DockPosition.Bottom, fraction: 0.26f );
+		_dockHost.Dock( "properties", "preview", DockPosition.Bottom, 0.55f );
+
+		_dockHost.Activate( "palette" );
+
+		_defaultLayout = _dockWindows.State;
+		_savedLayout = _defaultLayout;
 	}
 
 	private void PromptSave( Action action )
@@ -271,6 +324,13 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 		_maximizeIcon.Text = _window.IsMaximized ? "filter_none" : "crop_square";
 	}
 
+	public override void OnDeleted()
+	{
+		_dockWindows?.Dispose();
+		floatingRoots.Clear();
+		base.OnDeleted();
+	}
+
 	/// <summary>
 	/// A row with a shortcut shown beside it. Rows with nothing to do are just there to look at.
 	/// </summary>
@@ -286,6 +346,28 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 		var button = parent.Clickable( "windowbutton window-nodrag", onClick );
 		if ( classname is not null ) button.AddClass( classname );
 		return button.Icon( icon );
+	}
+
+	sealed class FloatingShortcuts : Panel
+	{
+		readonly ShaderGraphPlusPanelTest editor;
+
+		internal FloatingShortcuts( ShaderGraphPlusPanelTest editor )
+		{
+			this.editor = editor;
+			Style.Width = Length.Percent( 100 );
+			Style.Height = Length.Percent( 100 );
+		}
+
+		public override void OnButtonEvent( ButtonEvent e )
+		{
+			//if ( e.Pressed && editor.IsValid && editor.HandleShortcut( e ) )
+			//{
+			//	e.StopPropagation = true;
+			//	return;
+			//}
+			base.OnButtonEvent( e );
+		}
 	}
 }
 
