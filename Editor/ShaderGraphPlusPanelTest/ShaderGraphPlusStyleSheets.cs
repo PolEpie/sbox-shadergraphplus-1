@@ -17,7 +17,16 @@ public static class ShaderGraphPlusStyleSheets
 	public const string ShaderGraphPlusScss = @"
 		ShaderGraphPlusPanel > .main-toolbar { flex-shrink: 0; height: 40px; padding: 0px 8px; border-bottom: 1px solid #26282e; }
 		ShaderGraphPlusPanel .status { color: #6e737c; font-size: 11px; align-self: center; }
-		
+
+		.sg-graph { background-color: #1b1d22; }
+
+		.sg-node { position: absolute; flex-direction: column; min-width: 160px; min-height: 48px; background-color: #25282f; border: 1px solid #3a3e47; border-radius: 6px; }
+		.sg-node > .header { flex-direction: row; align-items: center; gap: 6px; height: 28px; padding: 0px 10px; background-color: #323743; border-radius: 6px 6px 0px 0px; cursor: move; }
+		.sg-node > .header > * { pointer-events: none; }
+		.sg-node > .header > .icon { font-size: 15px; color: #8a8f98; }
+		.sg-node > .header > .title { font-size: 12px; font-weight: 600; white-space: nowrap; }
+		.sg-node.preview { opacity: 0.45; border-color: #4b8bf5; }
+
 		.console > .body { flex-direction: row; flex-grow: 1; min-height: 0; }
 		.console > .body > .list { min-width: 0; }
 		.console > .body > .detail-splitter { width: 5px; flex-shrink: 0; cursor: ew-resize; background-color: #1a1c21; }
@@ -27,9 +36,9 @@ public static class ShaderGraphPlusStyleSheets
 		.console .detail-header { flex-direction: row; align-items: center; flex-shrink: 0; height: 26px; padding: 0px 4px 0px 10px; border-bottom: 1px solid #26282e; }
 		.console .detail-title { flex-grow: 1; color: #8a8f98; font-size: 11px; white-space: nowrap; overflow: hidden; }
 		.console .detail-body { flex-direction: column; flex-grow: 1; min-height: 0; overflow: scroll; padding: 7px 10px; }
-		
+
 		.palette-tree { flex-grow: 1; flex-shrink: 1; min-height: 0; }
-		
+
 		.sg-list { flex-direction: column; flex-grow: 1; padding: 4px 0px; }
 		.sg-list .category { padding: 8px 10px 4px 10px; color: #8a8f98; font-size: 11px; font-weight: 600; text-transform: uppercase; }
 		.sg-list .item { height: 26px; align-items: center; gap: 8px; padding: 0px 14px; }

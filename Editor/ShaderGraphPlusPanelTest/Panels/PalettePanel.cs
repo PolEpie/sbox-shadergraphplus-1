@@ -1,4 +1,4 @@
-﻿using Editor;
+using Editor;
 using Sandbox.UI;
 using Sandbox.UI.Construct;
 using ShaderGraphPlus;
@@ -57,7 +57,7 @@ public sealed class PalettePanel : Panel
 		};
 	}
 
-	public IEnumerable<IGrouping<string, DisplayInfo>> GetItems()
+	private IEnumerable<IGrouping<string, (TypeDescription Type, DisplayInfo Info)>> GetItems()
 	{
 		var types = EditorTypeLibrary.GetTypes<ShaderNodePlus>()
 			.Where( x =>
@@ -76,16 +76,14 @@ public sealed class PalettePanel : Panel
 				}
 				return true;
 			} )
-			.Select( x => DisplayInfo.ForType( x.TargetType ) );
+			.Select( x => (Type: x, Info: DisplayInfo.ForType( x.TargetType )) );
 
 		if ( !string.IsNullOrEmpty( _searchFilter.Value ) )
 		{
-			return types.Where( e => e.Name.Contains( _searchFilter.Value, StringComparison.OrdinalIgnoreCase ) )
-				.GroupBy( x => x.Group?.ToLower() ).OrderBy( p => p.Key == null )
-				.ThenBy( p => p.Key );
+			types = types.Where( e => e.Info.Name.Contains( _searchFilter.Value, StringComparison.OrdinalIgnoreCase ) );
 		}
 
-		return types.GroupBy( x => x.Group?.ToLower() )
+		return types.GroupBy( x => x.Info.Group?.ToLower() )
 			.OrderBy( p => p.Key == null )
 			.ThenBy( p => p.Key );
 	}
@@ -97,9 +95,9 @@ public sealed class PalettePanel : Panel
 		{
 			var categoryNode = new CategoryNode( category.Key ?? "Uncategorized" );
 
-			foreach ( var displayInfo in category.OrderBy( x => x.Name ) )
+			foreach ( var (type, info) in category.OrderBy( x => x.Info.Name ) )
 			{
-				categoryNode.AddItem( new Node( displayInfo.Name ) { Icon = displayInfo.Icon } );
+				categoryNode.AddItem( new Node( info.Name ) { Icon = info.Icon, Type = type } );
 			}
 
 			roots.Add( categoryNode );
@@ -138,6 +136,11 @@ class Node
 	public string Icon { get; set; }
 
 	public string ToolTip { get; set; }
+
+	/// <summary>
+	/// The shader node type a leaf row creates when dropped on the graph. Null for categories.
+	/// </summary>
+	public TypeDescription Type { get; init; }
 
 	public Node Parent { get; set; }
 
