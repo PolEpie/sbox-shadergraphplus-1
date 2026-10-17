@@ -138,7 +138,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		_graphView = new ShaderGraphPlusViewPanel();
 		_properties = new PropertiesPanel();
-		_palette = new PalettePanel( false );
+		_palette = new PalettePanel( IsSubgraph );
 		_blackboard = new BlackboardPanel();
 		_preview = new PreviewPanel();
 
