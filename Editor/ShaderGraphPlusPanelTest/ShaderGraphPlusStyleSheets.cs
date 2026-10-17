@@ -27,7 +27,7 @@ public static class ShaderGraphPlusStyleSheets
 		.sg-node > .header > .title { font-size: 12px; font-weight: 600; white-space: nowrap; }
 		.sg-node.preview { opacity: 0.45; border-color: #4b8bf5; }
 
-    .console > .body { flex-direction: row; flex-grow: 1; min-height: 0; }
+		.console > .body { flex-direction: row; flex-grow: 1; min-height: 0; }
 		.console > .body > .list { min-width: 0; }
 		.console > .body > .detail-splitter { width: 5px; flex-shrink: 0; cursor: ew-resize; background-color: #1a1c21; }
 		.console > .body > .detail-splitter:hover { background-color: #4b8bf5; }
