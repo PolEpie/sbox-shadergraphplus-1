@@ -21,10 +21,10 @@ public sealed class GraphNodeCard : Panel
 
 	private readonly Header _header;
 
-	/// <param name="isPreview">
+	/// <summary>
 	/// A see-through stand-in shown while a palette row is dragged over the graph. It ignores the
 	/// mouse so it never becomes the drop target or starts a card drag.
-	/// </param>
+	/// </summary>
 	public GraphNodeCard( TypeDescription type, Vector2 position, bool isPreview = false )
 	{
 		Type = type;
@@ -41,6 +41,7 @@ public sealed class GraphNodeCard : Panel
 		{
 			AddClass( "preview" );
 			Style.PointerEvents = PointerEvents.None;
+			
 			// Handle forces PointerEvents.All inline on itself, so override it there too
 			_header.Style.PointerEvents = PointerEvents.None;
 			_header.DragEnabled = false;
@@ -78,7 +79,10 @@ public sealed class GraphNodeCard : Panel
 			Positioned = false;
 		}
 
-		protected override void OnDragMove( Vector2 delta ) => _card.MoveTo( DragOrigin + delta );
+		protected override void OnDragMove( Vector2 delta )
+		{
+			_card.MoveTo( GraphViewPanel.SnapToGrid( DragOrigin + delta ) );
+		}
 
 		protected override void OnDragFinish( bool cancelled )
 		{
