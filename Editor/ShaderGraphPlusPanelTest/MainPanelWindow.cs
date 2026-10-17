@@ -3,6 +3,8 @@ using Sandbox.UI;
 using Sandbox.UI.Construct;
 using ShaderGraphPlus;
 
+using NodeEditorPlusTest;
+
 namespace ShaderGraphPlusPanelTest;
 
 public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
@@ -13,7 +15,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	public string FileType => ShaderGraphPlusGlobals.AssetTypeName;
 	public string FileExtension => ShaderGraphPlusGlobals.AssetTypeExtension;
 
-	private GraphViewPanel _graphView;
+	private ShaderGraphPlusViewPanel _graphView;
 
 	[Menu( "Editor", "Shader Graph Plus/NewEditorTest", "schema" )]
 	public static void OpenNewEditorTest()
@@ -133,7 +135,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		ConsolePanel.Hook();
 
-		_graphView = new GraphViewPanel();
+		_graphView = new ShaderGraphPlusViewPanel();
 
 		var nodeTypes = EditorTypeLibrary.GetTypes<ShaderNodePlus>()
 			.Where( x => !x.IsAbstract && !x.HasAttribute<HideAttribute>() ).OrderBy( x => x.Name );

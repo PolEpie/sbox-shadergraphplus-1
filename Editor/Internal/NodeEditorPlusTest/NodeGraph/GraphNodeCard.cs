@@ -1,7 +1,7 @@
 using Sandbox.UI;
 using Sandbox.UI.Construct;
 
-namespace ShaderGraphPlusPanelTest;
+namespace NodeEditorPlusTest;
 
 /// <summary>
 /// A shader node placed on the graph canvas. Lives in <see cref="CanvasPanel.Content"/>, so it pans

@@ -1,15 +1,15 @@
-﻿using Editor.NodeEditor;
+﻿
 using Sandbox.UI;
 using ShaderGraphPlus;
-using static Sandbox.VertexLayout;
+using ShaderGraphPlusPanelTest;
 
-namespace ShaderGraphPlusPanelTest;
+namespace NodeEditorPlusTest;
 
 /// <summary>
 /// The node graph surface. Middle-drag pans, the wheel zooms around the cursor, and palette
 /// rows dropped here become <see cref="GraphNodeCard"/>s at the cursor.
 /// </summary>
-public sealed class GraphViewPanel : CanvasPanel
+public class GraphViewPanel : CanvasPanel
 {
 	/// <summary>
 	/// Spacing of the minor grid lines, in canvas units. Nodes snap to it.
@@ -39,8 +39,6 @@ public sealed class GraphViewPanel : CanvasPanel
 	/// </summary>
 	private GraphNodeCard _dropPreview;
 
-	private readonly Dictionary<string, INodeType> AvailableNodes = new( StringComparer.OrdinalIgnoreCase );
-
 	public GraphViewPanel() : base()
 	{
 		AddClass( ShaderGraphPlusCssClasses.EditorDockPane );
@@ -52,34 +50,6 @@ public sealed class GraphViewPanel : CanvasPanel
 		ResetView();
 	}
 
-	public void AddNodeType<T>()
-	where T : BaseNodePlus
-	{
-		AddNodeType( EditorTypeLibrary.GetType<T>() );
-	}
-
-	public void AddNodeType( TypeDescription type )
-	{
-		var nodeType = new ClassNodeType( type );
-
-		AvailableNodes.TryAdd( nodeType.Identifier, nodeType );
-	}
-
-	public void AddNodeType( string subgraphPath )
-	{
-		var subgraphTxt = Editor.FileSystem.Content.ReadAllText( subgraphPath );
-		var subgraph = JsonSerializer.Deserialize<ShaderGraphPlus.ShaderGraphPlus>( subgraphTxt, ShaderGraphPlus.ShaderGraphPlus.SerializerOptions() );
-		if ( !subgraph.AddToNodeLibrary ) return;
-		var nodeType = new SubgraphNodeType( subgraphPath, EditorTypeLibrary.GetType<SubgraphNode>() );
-		nodeType.SetDisplayInfo( subgraph );
-		AvailableNodes.TryAdd( nodeType.Identifier, nodeType );
-	}
-
-	public INodeType FindNodeType( Type type )
-	{
-		return AvailableNodes.TryGetValue( type.FullName!, out var nodeType ) ? nodeType : null;
-	}
-
 	public void ResetView() => SetView( new Vector2( -500, -300 ), new Vector2( 500, 300 ) );
 
 	/// <summary>
@@ -87,7 +57,7 @@ public sealed class GraphViewPanel : CanvasPanel
 	/// </summary>
 	public GraphNodeCard AddNode( TypeDescription type, Vector2 position )
 	{
-		return Content.AddChild( new GraphNodeCard( type, SnapToGrid( position ) ) );
+		return Content.AddChild( new GraphNodeCard( type, position.SnapToGrid( GridSize ) ) );
 	}
 
 	//public GraphNodeCard CreateNewNode( TypeDescription type, Vector2 position )
@@ -106,6 +76,8 @@ public sealed class GraphViewPanel : CanvasPanel
 		if ( type == null )
 			return null;
 
+		SGPLogger.Info( $"TODO : GraphViewPanel.CreateNewNode()" );
+
 		var typeDescription = type.CreateNodeTest();
 
 		return AddNode( typeDescription, position );
@@ -116,7 +88,7 @@ public sealed class GraphViewPanel : CanvasPanel
 	/// </summary>
 	public static Vector2 SnapToGrid( Vector2 position )
 	{
-		return new Vector2( MathF.Round( position.x / GridSize ), MathF.Round( position.y / GridSize ) ) * GridSize;
+		return position.SnapToGrid( GridSize );
 	}
 
 	/// <summary>
@@ -175,7 +147,7 @@ public sealed class GraphViewPanel : CanvasPanel
 			return;
 		}
 
-		var position = SnapToGrid( ScreenToCanvas( MousePosition ) );
+		var position = ScreenToCanvas( MousePosition ).SnapToGrid( GridSize );
 
 		if ( _dropPreview is null || _dropPreview.Type != type )
 		{
