@@ -28,7 +28,7 @@ public static class ShaderGraphPlusStyleSheets
 		.console .detail-title { flex-grow: 1; color: #8a8f98; font-size: 11px; white-space: nowrap; overflow: hidden; }
 		.console .detail-body { flex-direction: column; flex-grow: 1; min-height: 0; overflow: scroll; padding: 7px 10px; }
 		
-    .palette-tree { flex-grow: 1; flex-shrink: 1; min-height: 0; }
+		.palette-tree { flex-grow: 1; flex-shrink: 1; min-height: 0; }
 		
 		.sg-list { flex-direction: column; flex-grow: 1; padding: 4px 0px; }
 		.sg-list .category { padding: 8px 10px 4px 10px; color: #8a8f98; font-size: 11px; font-weight: 600; text-transform: uppercase; }
