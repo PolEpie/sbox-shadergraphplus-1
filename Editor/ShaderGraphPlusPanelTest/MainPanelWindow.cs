@@ -5,15 +5,9 @@ using ShaderGraphPlus;
 
 namespace ShaderGraphPlusPanelTest;
 
-public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
+public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 {
 	private bool _dirty = false;
-
-	private DockHost _dockHost;
-	private PanelDockWindows _dockWindows;
-	private string _defaultLayout;
-	private string _savedLayout;
-	private readonly List<RootPanel> floatingRoots = new();
 
 	public bool IsSubgraph => false;
 	public string FileType => ShaderGraphPlusGlobals.AssetTypeName;
@@ -27,17 +21,12 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 		_window.Root.AddChild( new ShaderGraphPlusPanelTest() );
 	}
 
-	public ShaderGraphPlusPanelTest()
+	public ShaderGraphPlusPanelTest() : base()
 	{
-		AddClass( "editor-window" );
-
-		StyleSheet.Load( ShaderGraphPlusStyleSheets.EditorScss );
-		StyleSheet.Load( ShaderGraphPlusStyleSheets.GalleryScss );
-
 		StyleSheet.AddInline( ShaderGraphPlusStyleSheets.ShaderGraphPlusScss, "shadergraphplus_style" );
 
 		Style.FlexDirection = FlexDirection.Column;
-
+		
 		BuildMenuBar();
 		CreateToolBar();
 		CreateUI();
@@ -106,9 +95,9 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 
 		view.AddSeparator();
 		
-		Option( view, "Save Layout", action: () => _savedLayout = _dockWindows.State );
-		Option( view, "Restore Layout", action: () => _dockWindows.RestoreState( _savedLayout ) );
-		Option( view, "Reset Layout", action: () => _dockWindows.RestoreState( _defaultLayout ) );
+		Option( view, "Save Layout", action: () => _savedLayout = DockWindows.State );
+		Option( view, "Restore Layout", action: () => DockWindows.RestoreState( _savedLayout ) );
+		Option( view, "Reset Layout", action: () => DockWindows.RestoreState( _defaultLayout ) );
 		
 		view.AddSeparator();
 		
@@ -133,34 +122,33 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 		UpdateTitle();
 	}
 
-	private void CreateUI()
+	protected override void CreateUI()
 	{
+		base.CreateUI();
+
 		var properties = new Panel();
 		properties.AddClass( "sg-props" );
 
 		ConsolePanel.Hook();
 
-		_dockHost = AddChild( new DockHost() );
-		_dockWindows = new PanelDockWindows( _dockHost ) { ConfigureWindow = ConfigureFloatingWindow };
+		DockHost.Register( "graph", "Graph", () => new GraphViewPanel(), canClose: false, icon: "account_tree" );
+		DockHost.Register( "palette", "Palette", () => new PalettePanel( false ), icon: "palette" );
+		DockHost.Register( "blackboard", "Blackboard", () => new BlackboardPanel(), icon: "format_list_bulleted" );
 
-		_dockHost.Register( "graph", "Graph", () => new GraphViewPanel(), canClose: false, icon: "account_tree" );
-		_dockHost.Register( "palette", "Palette", () => new PalettePanel( false ), icon: "palette" );
-		_dockHost.Register( "blackboard", "Blackboard", () => new BlackboardPanel(), icon: "format_list_bulleted" );
+		DockHost.Register( "preview", "Preview", () => new PreviewPanel(), icon: "photo" );
+		DockHost.Register( "properties", "Properties", properties, icon: "tune" );
+		DockHost.Register( "console", "Console", () => new ConsolePanel(), icon: "text_snippet" );
 
-		_dockHost.Register( "preview", "Preview", () => new PreviewPanel(), icon: "photo" );
-		_dockHost.Register( "properties", "Properties", properties, icon: "tune" );
-		_dockHost.Register( "console", "Console", () => new ConsolePanel(), icon: "text_snippet" );
+		DockHost.Dock( "graph" );
+		DockHost.Dock( "palette", position: DockPosition.Left, fraction: 0.24f );
+		DockHost.Dock( "blackboard", "palette", position: DockPosition.Center, fraction: 0.18f );
+		DockHost.Dock( "preview", position: DockPosition.Right, fraction: 0.26f );
+		DockHost.Dock( "console", position: DockPosition.Bottom, fraction: 0.26f );
+		DockHost.Dock( "properties", "preview", DockPosition.Bottom, 0.55f );
 
-		_dockHost.Dock( "graph" );
-		_dockHost.Dock( "palette", position: DockPosition.Left, fraction: 0.24f );
-		_dockHost.Dock( "blackboard", "palette", position: DockPosition.Center, fraction: 0.18f );
-		_dockHost.Dock( "preview", position: DockPosition.Right, fraction: 0.26f );
-		_dockHost.Dock( "console", position: DockPosition.Bottom, fraction: 0.26f );
-		_dockHost.Dock( "properties", "preview", DockPosition.Bottom, 0.55f );
+		DockHost.Activate( "palette" );
 
-		_dockHost.Activate( "palette" );
-
-		_defaultLayout = _dockWindows.State;
+		_defaultLayout = DockWindows.State;
 		_savedLayout = _defaultLayout;
 	}
 
@@ -294,44 +282,6 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 		WindowTitle.Text = $"Shader Graph Plus - untitled{(_dirty ? "*" : "")}";
 	}
 
-	private void UpdateMaximizeIcon()
-	{
-		_maximizeIcon.Text = _window.IsMaximized ? "filter_none" : "crop_square";
-	}
-
-	public override void OnDeleted()
-	{
-		_dockWindows?.Dispose();
-		floatingRoots.Clear();
-		base.OnDeleted();
-	}
-
-	void ShowDock( string id )
-	{
-		var host = _dockHost.Find( id ) is not null ? _dockHost : floatingRoots
-			.Where( x => x.IsValid )
-			.SelectMany( x => x.Descendants.OfType<DockHost>() )
-			.FirstOrDefault( x => x.Find( id ) is not null );
-		if ( host is null ) return;
-		if ( !host.IsOpen( id ) ) host.Dock( id );
-		host.Activate( id );
-		PanelWindow.FromPanel( host )?.Focus();
-	}
-
-	void ConfigureFloatingWindow( RootPanel root )
-	{
-		root.AddClass( "mock-editor-surface" );
-		root.AddClass( "editor-window" );
-		root.StyleSheet.Load( "/styles/gallery.scss" );
-		floatingRoots.Add( root );
-
-
-		// A floated tool no longer bubbles keys through EditorWindow.
-		var host = root.Children.OfType<DockHost>().Single();
-		var shortcuts = root.AddChild( new FloatingShortcuts( this ) );
-		host.Parent = shortcuts;
-	}
-
 	/// <summary>
 	/// A row with a shortcut shown beside it. Rows with nothing to do are just there to look at.
 	/// </summary>
@@ -348,27 +298,4 @@ public sealed class ShaderGraphPlusPanelTest : PanelEditorWindow
 		if ( classname is not null ) button.AddClass( classname );
 		return button.Icon( icon );
 	}
-
-	sealed class FloatingShortcuts : Panel
-	{
-		readonly ShaderGraphPlusPanelTest editor;
-
-		internal FloatingShortcuts( ShaderGraphPlusPanelTest editor )
-		{
-			this.editor = editor;
-			Style.Width = Length.Percent( 100 );
-			Style.Height = Length.Percent( 100 );
-		}
-
-		public override void OnButtonEvent( ButtonEvent e )
-		{
-			//if ( e.Pressed && editor.IsValid && editor.HandleShortcut( e ) )
-			//{
-			//	e.StopPropagation = true;
-			//	return;
-			//}
-			base.OnButtonEvent( e );
-		}
-	}
 }
-
