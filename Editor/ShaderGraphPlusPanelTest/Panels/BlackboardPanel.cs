@@ -19,6 +19,18 @@ public sealed class BlackboardPanel : Panel
 	private string _filter = "";
 	private readonly Panel _list;
 
+	private BlackboardParameter _selected;
+
+	/// <summary>
+	/// The parameter picked in the list, or null.
+	/// </summary>
+	public BlackboardParameter Selected => _selected;
+
+	/// <summary>
+	/// The selection changed - to null when it's cleared.
+	/// </summary>
+	public Action<BlackboardParameter> OnSelected { get; set; }
+
 	private ShaderGraphPlus.ShaderGraphPlus _graph;
 
 	/// <summary>
@@ -30,6 +42,7 @@ public sealed class BlackboardPanel : Panel
 		set
 		{
 			_graph = value;
+			Select( null );
 			Rebuild();
 		}
 	}
@@ -50,6 +63,12 @@ public sealed class BlackboardPanel : Panel
 		BuildToolbar();
 
 		_list = Add.Panel( "sg-params" );
+
+		// Pressing empty space clears the selection
+		_list.AddEventListener( "onmousedown", e =>
+		{
+			if ( e.Target == _list ) Select( null );
+		} );
 
 		Rebuild();
 	}
@@ -121,7 +140,7 @@ public sealed class BlackboardPanel : Panel
 	{
 		var parameter = (BlackboardParameter)type.CreateParameter( _graph );
 
-		// New parameters land in the default group, the way the Qt blackboard files them
+		// Default group, like the Qt blackboard
 		var groupName = parameter.GetGroupTitle();
 		if ( _graph.TryFindGroupData( groupName, out var group ) )
 		{
@@ -140,8 +159,7 @@ public sealed class BlackboardPanel : Panel
 	}
 
 	/// <summary>
-	/// Take a parameter out of the graph along with the nodes that read it and its group entry, the
-	/// way the Qt blackboard does. Asks first when nodes would go with it.
+	/// Remove a parameter, its nodes and its group entry. Asks first if nodes would go.
 	/// </summary>
 	internal void Remove( BlackboardParameter parameter )
 	{
@@ -157,6 +175,9 @@ public sealed class BlackboardPanel : Panel
 			}
 
 			_graph.RemoveParameter( parameter );
+
+			if ( _selected == parameter )
+				Select( null );
 
 			if ( _graph.TryFindGroupData( parameter.GetGroupTitle(), out var group ) )
 			{
@@ -183,6 +204,24 @@ public sealed class BlackboardPanel : Panel
 	}
 
 	/// <summary>
+	/// Make <paramref name="parameter"/> the selected one, or clear the selection with null.
+	/// </summary>
+	public void Select( BlackboardParameter parameter )
+	{
+		if ( _selected == parameter )
+			return;
+
+		_selected = parameter;
+
+		foreach ( var row in _list.Children.OfType<ParameterRow>() )
+		{
+			row.SetSelected( row.Parameter == parameter );
+		}
+
+		OnSelected?.Invoke( parameter );
+	}
+
+	/// <summary>
 	/// Recreate the rows from the graph, applying the filter.
 	/// </summary>
 	public void Rebuild()
@@ -201,7 +240,8 @@ public sealed class BlackboardPanel : Panel
 
 		foreach ( var parameter in parameters )
 		{
-			_list.AddChild( new ParameterRow( this, parameter ) );
+			var row = _list.AddChild( new ParameterRow( this, parameter ) );
+			row.SetSelected( parameter == _selected );
 		}
 	}
 
@@ -224,6 +264,8 @@ internal sealed class ParameterRow : Panel
 	private readonly BlackboardParameter _parameter;
 	private Sandbox.UI.Menu _menu;
 
+	internal BlackboardParameter Parameter => _parameter;
+
 	public ParameterRow( BlackboardPanel owner, BlackboardParameter parameter )
 	{
 		_owner = owner;
@@ -235,11 +277,10 @@ internal sealed class ParameterRow : Panel
 
 		Style.BorderLeftColor = config.Color;
 
-		// A label's text sits at the top of its box, so the chip is a centering box around it
-		var type = Add.Panel( "type" );
-		type.Style.BackgroundColor = config.Color.WithAlpha( 0.12f );
-		type.Style.BorderColor = config.Color.WithAlpha( 0.45f );
-		type.Add.Label( config.Name, "type-text" ).Style.FontColor = config.Color;
+		// Selection tint, shown by .selected. Toggling the row's own background left it magenta.
+		Add.Panel( "highlight" ).Style.BackgroundColor = config.Color.WithAlpha( 0.2f );
+
+		AddTypeChip( this, config );
 
 		Add.Label( parameter.Name, "name" );
 
@@ -254,9 +295,23 @@ internal sealed class ParameterRow : Panel
 		Tooltip = $"{parameter.DisplayInfo.Name} parameter";
 	}
 
+	/// <summary>
+	/// Highlight in the type's color, like the Qt blackboard's selected pill.
+	/// </summary>
+	internal void SetSelected( bool selected ) => SetClass( "selected", selected );
+
+	protected override void OnMouseDown( MousePanelEvent e )
+	{
+		base.OnMouseDown( e );
+
+		if ( e.Button == "mouseleft" )
+			_owner.Select( _parameter );
+	}
+
 	protected override void OnRightClick( MousePanelEvent e )
 	{
 		e.StopPropagation();
+		_owner.Select( _parameter );
 		_menu?.Delete( true );
 
 		var menu = new Sandbox.UI.Menu();
@@ -274,6 +329,20 @@ internal sealed class ParameterRow : Panel
 		return ShaderGraphPlusTheme.BlackboardConfigs.TryGetValue( parameter.GetType(), out var config )
 			? config
 			: new BlackboardConfig( parameter.DisplayInfo.Name, ShaderGraphPlusTheme.DefaultTypeColor );
+	}
+
+	/// <summary>
+	/// The type label with its type-colored dot, as the Qt blackboard paints them. Shared with the
+	/// properties heading so a selection reads the same in both places.
+	/// </summary>
+	internal static void AddTypeChip( Panel parent, BlackboardConfig config )
+	{
+		// Box that centers the label vertically
+		var chip = parent.Add.Panel( "sg-type" );
+		chip.Style.BackgroundColor = config.Color.WithAlpha( 0.12f );
+		chip.Style.BorderColor = config.Color.WithAlpha( 0.45f );
+		chip.Add.Panel( "dot" ).Style.BackgroundColor = config.Color;
+		chip.Add.Label( config.Name, "text" ).Style.FontColor = config.Color;
 	}
 
 	private void AddValue( BlackboardParameter parameter )
@@ -366,7 +435,6 @@ internal sealed class ParameterRow : Panel
 			if ( tex.SrgbRead ) yield return "sRGB";
 			if ( tex.ColorSpace == TextureColorSpace.Linear ) yield return "Linear";
 			yield return tex.ImageFormat.ToString();
-			yield return $"_{tex.ExtensionString.ToLowerInvariant()}";
 			if ( tex.Processor != TextureProcessor.None ) yield return tex.Processor.ToString();
 			if ( tex.IsAttribute ) yield return "Attribute";
 		}

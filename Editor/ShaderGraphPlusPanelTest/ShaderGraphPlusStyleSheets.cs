@@ -40,13 +40,17 @@ public static class ShaderGraphPlusStyleSheets
 		.palette-tree { flex-grow: 1; flex-shrink: 1; min-height: 0; }
 
 		.sg-blackboard { flex-direction: column; }
-		.sg-params { flex-direction: column; flex-grow: 1; flex-shrink: 1; min-height: 0; overflow: scroll; padding: 4px; gap: 2px; }
+		.sg-params { flex-direction: column; flex-grow: 1; flex-shrink: 1; min-height: 0; overflow: scroll; padding: 4px; gap: 2px; pointer-events: all; }
 		.sg-params.is-empty { align-items: center; justify-content: center; }
 		.sg-params > .empty { padding: 12px; color: #6e737c; font-size: 11px; text-align: center; }
-		.sg-param { flex-direction: row; align-items: center; flex-shrink: 0; gap: 8px; min-height: 28px; padding: 0px 8px; border-left-width: 3px; border-radius: 4px; background-color: #23262c; }
+		.sg-param { position: relative; flex-direction: row; align-items: center; flex-shrink: 0; gap: 8px; min-height: 28px; padding: 0px 8px; border-left-width: 3px; border-radius: 4px; background-color: #23262c; pointer-events: all; }
 		.sg-param:hover { background-color: #2a2e36; }
-		.sg-param > .type { flex-direction: row; align-items: center; justify-content: center; flex-shrink: 0; height: 18px; padding: 0px 6px; border-width: 1px; border-radius: 3px; }
-		.sg-param > .type > .type-text { font-size: 11px; font-weight: 600; white-space: nowrap; }
+		.sg-param.selected > .name { color: #ffffff; }
+		.sg-param > .highlight { position: absolute; top: 0px; left: 0px; right: 0px; bottom: 0px; border-radius: 0px 4px 4px 0px; pointer-events: none; display: none; }
+		.sg-param.selected > .highlight { display: flex; }
+		.sg-type { flex-direction: row; align-items: center; justify-content: center; flex-shrink: 0; gap: 5px; height: 18px; padding: 0px 6px; border-width: 1px; border-radius: 3px; }
+		.sg-type > .dot { flex-shrink: 0; width: 6px; height: 6px; border-radius: 3px; }
+		.sg-type > .text { font-size: 11px; font-weight: 600; white-space: nowrap; }
 		.sg-param > .name { flex-grow: 1; flex-shrink: 1; min-width: 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 		.sg-param > .tags { flex-direction: row; flex-shrink: 0; gap: 4px; }
 		.sg-param > .tags > .tag { padding: 0px 5px; border-radius: 3px; background-color: #31353e; color: #9aa0aa; font-size: 10px; white-space: nowrap; }
@@ -64,9 +68,24 @@ public static class ShaderGraphPlusStyleSheets
 		.sg-preview > .ball { width: 160px; height: 160px; border-radius: 80px; background-color: #d9773a; }
 		
 		.sg-props { flex-direction: column; flex-grow: 1; }
-		.sg-props > .heading { flex-direction: column; padding: 10px 12px; border-bottom: 1px solid #26282e; }
-		.sg-props .title { font-size: 13px; font-weight: 600; }
-		.sg-props .subtitle { color: #8a8f98; font-size: 11px; }
+		.sg-props > .heading { flex-direction: column; flex-shrink: 0; gap: 4px; padding: 10px 12px; border-bottom: 1px solid #26282e; }
+		.sg-props > .heading > .row { flex-direction: row; align-items: center; gap: 8px; }
+		.sg-props > .heading > .row > .title { flex-shrink: 1; min-width: 0; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+		.sg-props > .heading > .row > .icon { flex-shrink: 0; font-size: 16px; color: #8a8f98; }
+		.sg-props > .heading > .subtitle { color: #8a8f98; font-size: 11px; }
+		.sg-props > .body { flex-direction: column; flex-grow: 1; flex-shrink: 1; min-height: 0; overflow: scroll; padding: 4px 6px 12px 6px; }
+		.sg-props > .body > * { flex-shrink: 0; }
+		.sg-props > .body.is-empty { align-items: center; justify-content: center; }
+		.sg-props > .body > .empty { padding: 12px; color: #6e737c; font-size: 11px; text-align: center; }
+		.sg-props .controlgroup { padding: 0px; border-radius: 0px; }
+		.sg-props .controlgroup > .body { gap: 2px; }
+		.sg-props .controlgroup > .header { flex-shrink: 0; margin-top: 10px; padding: 0px 2px 2px 0px; color: #c4c8cf; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; text-shadow: none; }
+		.sg-props GenericControl .controlgroup > .header, .sg-props GenericControl > .title { margin-top: 6px; color: #8a8f98; font-weight: 600; text-transform: none; letter-spacing: 0px; }
+		.sg-props ControlSheetRow.wide { align-items: stretch; }
+		.sg-props ControlSheet { font-size: 12px; }
+		.sg-props ControlSheetRow { align-items: center; min-height: 28px; }
+		.sg-props ControlSheetRow > .left { width: 110px; padding: 4px 6px; }
+		.sg-props ControlSheetRow > .left > .title { width: 98px; font-size: 12px; color: #b4b9c2; text-overflow: ellipsis; }
 		.sg-props .pin { height: 26px; align-items: center; gap: 8px; padding: 0px 12px; }
 	";
 }

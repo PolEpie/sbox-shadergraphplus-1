@@ -45,9 +45,7 @@ public sealed class PalettePanel : Panel
 	{
 		base.Tick();
 
-		// During a drag the engine freezes hover on the source row, so its tooltip would open
-		// mid-drag and hang where it opened. GetTooltip only runs on bind, so rebind on the
-		// transition to drop row tooltips while dragging and restore them after.
+		// Tooltips are read on bind, so rebind to drop them while dragging
 		if ( _tree.IsDragging == _wasDragging )
 			return;
 

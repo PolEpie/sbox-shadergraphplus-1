@@ -25,7 +25,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	[Menu( "Editor", "Shader Graph Plus/NewEditorTest", "schema" )]
 	public static void OpenNewEditorTest()
 	{
-		// Look the open editor up rather than keeping a static: statics don't survive hotload, the window does.
+		// Find the open editor instead of a static - statics don't survive hotload
 		foreach ( var existing in PanelWindow.All.Where( x => x.Root?.Children.OfType<ShaderGraphPlusPanelTest>().Any() == true ).ToArray() )
 		{
 			existing.Dispose();
@@ -147,9 +147,12 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		ConsolePanel.Hook();
 
 		_graphView = new ShaderGraphPlusViewPanel();
-		_properties = new PropertiesPanel();
+		_properties = new PropertiesPanel { Target = _graph };
 		_palette = new PalettePanel( IsSubgraph );
 		_blackboard = new BlackboardPanel( IsSubgraph ) { Graph = _graph };
+		// Nothing selected shows the graph, like the Qt editor
+		_blackboard.OnSelected = parameter => _properties.Target = (object)parameter ?? _graph;
+		_properties.OnChanged = _blackboard.Rebuild;
 		_preview = new PreviewPanel();
 
 		var nodeTypes = EditorTypeLibrary.GetTypes<ShaderNodePlus>()
@@ -222,6 +225,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		_graph = new ShaderGraphPlus.ShaderGraphPlus { IsSubgraph = IsSubgraph };
 		_blackboard.Graph = _graph;
+		_properties.Target = _graph;
 
 		_graphView.RebuildFromGraph();
 
@@ -326,6 +330,15 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		if ( evaluate )
 			GeneratePreviewCode();
+	}
+
+	/// <summary>
+	/// Re-add the stylesheet so a hotload picks up its new text.
+	/// </summary>
+	public override void OnHotloaded()
+	{
+		StyleSheet.AddInline( ShaderGraphPlusStyleSheets.ShaderGraphPlusScss, "shadergraphplus_style" );
+		base.OnHotloaded();
 	}
 
 	// For Development only
