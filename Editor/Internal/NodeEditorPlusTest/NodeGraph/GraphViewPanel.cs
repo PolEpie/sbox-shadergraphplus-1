@@ -36,11 +36,12 @@ public class GraphViewPanel : CanvasPanel
 	private NodeCardUI _dropPreview;
 
 	/// <summary>
-	/// Set by <see cref="OnDragLeave"/>, resolved in <see cref="Tick"/>. Drag enter/leave bubble up from
-	/// descendant cards, and children process their events before us, so crossing a card yields
-	/// enter/leave pairs in either order. Only a leave that no enter cancelled in the same frame is real.
+	/// Drop targets inside this view that the palette drag is currently over. Drag enter/leave bubble
+	/// up from placed cards, and children run their events before us, so crossing a card yields an
+	/// enter/leave pair in either order. The count is order-independent: it only hits 0 once the drag
+	/// has really left the view, which <see cref="Tick"/> checks after all of the frame's events ran.
 	/// </summary>
-	private bool _dragLeavePending;
+	private int _dragDepth;
 
 	readonly List<NodeCardUI> _cards = new();
 
@@ -96,7 +97,7 @@ public class GraphViewPanel : CanvasPanel
 		base.Tick();
 		_hasDropped = false;
 
-		if ( _dragLeavePending )
+		if ( _dropPreview != null && _dragDepth == 0 )
 		{
 			ClearDropPreview();
 		}
@@ -118,7 +119,7 @@ public class GraphViewPanel : CanvasPanel
 
 		if ( e.Target is TreeRow row && row.UserData is DisplayInfo info )
 		{
-			_dragLeavePending = false;
+			_dragDepth++;
 
 			// Also fires when the cursor moves onto a placed card (bubbled), so reuse the existing preview.
 			if ( _dropPreview == null )
@@ -153,9 +154,9 @@ public class GraphViewPanel : CanvasPanel
 			return;
 		}
 
-		if ( _dropPreview != null )
+		if ( e.Target is TreeRow { UserData: DisplayInfo } )
 		{
-			_dragLeavePending = true;
+			_dragDepth = Math.Max( 0, _dragDepth - 1 );
 		}
 
 		SGPLogger.Info( "OnDragLeave()" );
@@ -207,7 +208,7 @@ public class GraphViewPanel : CanvasPanel
 	{
 		_dropPreview?.Delete( true );
 		_dropPreview = null;
-		_dragLeavePending = false;
+		_dragDepth = 0;
 	}
 
 	public override void OnDraw( Painter painter )
