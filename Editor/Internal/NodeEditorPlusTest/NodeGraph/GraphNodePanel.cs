@@ -9,7 +9,7 @@ namespace NodeEditorPlusTest;
 /// </summary>
 public class GraphNodePanel : NodePanel
 {
-	public GraphViewPanel View => (GraphViewPanel)Graph;
+	public new GraphViewPanel Graph => (GraphViewPanel)base.Graph;
 
 	public GraphNodePanel( GraphViewPanel graph, INode node, bool isPreview = false ) : base( graph, node, isPreview )
 	{
@@ -18,20 +18,20 @@ public class GraphNodePanel : NodePanel
 	protected override void OnDragMove( Vector2 delta )
 	{
 		base.OnDragMove( delta );
-		View.UpdateCommentDrop();
+		Graph.UpdateCommentDrop();
 	}
 
 	protected override void OnDragFinish( bool cancelled )
 	{
 		base.OnDragFinish( cancelled );
-		View.FinishCommentDrop( cancelled );
+		Graph.FinishCommentDrop( cancelled );
 	}
 
 	protected override void OnRightClick( MousePanelEvent e )
 	{
 		if ( IsPreview ) return;
 
-		View.OpenNodeMenu( this );
+		Graph.OpenNodeMenu( this );
 		e.StopPropagation();
 	}
 }
