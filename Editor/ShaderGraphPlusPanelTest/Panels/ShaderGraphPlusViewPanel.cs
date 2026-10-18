@@ -3,6 +3,7 @@ using NodeEditorPlusTest;
 using Sandbox.Internal;
 using Sandbox.UI;
 using ShaderGraphPlus;
+using ShaderGraphPlus.Nodes;
 
 namespace ShaderGraphPlusPanelTest;
 
@@ -13,6 +14,9 @@ public sealed class ShaderGraphPlusViewPanel : GraphViewPanel
 	private readonly Dictionary<string, IBlackboardParameterType> AvailableParameters = new( StringComparer.OrdinalIgnoreCase );
 
 	protected override INodeType CommentNodeType { get; } = new ClassNodeType( EditorTypeLibrary.GetType<CommentNode>() );
+
+	protected override INodeType RerouteNodeType { get; } = new ClassNodeType( EditorTypeLibrary.GetType<ReroutePlus>() );
+
 
 	public ShaderGraphPlusViewPanel() : base()
 	{
