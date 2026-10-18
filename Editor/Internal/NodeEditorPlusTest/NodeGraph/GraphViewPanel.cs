@@ -26,10 +26,8 @@ public class GraphViewPanel : CanvasPanel
 	private NodeCardUI _dropPreview;
 
 	/// <summary>
-	/// Drop targets inside this view that the palette drag is currently over. Drag enter/leave bubble
-	/// up from placed cards, and children run their events before us, so crossing a card yields an
-	/// enter/leave pair in either order. The count is order-independent: it only hits 0 once the drag
-	/// has really left the view, which <see cref="Tick"/> checks after all of the frame's events ran.
+	/// Palette drag enter/leave count. Events bubble up from cards in any order, so the drag only
+	/// left the view when this is 0 in <see cref="Tick"/>.
 	/// </summary>
 	private int _dragDepth;
 
@@ -103,7 +101,7 @@ public class GraphViewPanel : CanvasPanel
 		{
 			_dragDepth++;
 
-			// Also fires when the cursor moves onto a placed card (bubbled), so reuse the existing preview.
+			// Also fires over placed cards, so keep the existing preview
 			if ( _dropPreview == null )
 			{
 				var position = ScreenToCanvas( MousePosition ).SnapToGrid( GridSize );

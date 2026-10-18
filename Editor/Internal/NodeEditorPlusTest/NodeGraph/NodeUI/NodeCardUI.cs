@@ -63,8 +63,7 @@ public class NodeCardUI : Panel
 	}
 
 	/// <summary>
-	/// No tooltip while the card is being dragged: the editor's tooltip window stays where it
-	/// opened, so it would hang behind the moving card.
+	/// No tooltip while dragging - it would stay where it opened.
 	/// </summary>
 	public override bool HasTooltip => _header is not { IsDragging: true } && base.HasTooltip;
 
