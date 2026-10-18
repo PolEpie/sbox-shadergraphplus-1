@@ -34,7 +34,6 @@ public sealed class PalettePanel : Panel
 		_tree.OnActivate = treeNode => SGPLogger.Info( $"activated {treeNode.Name}" );
 		_tree.OnRename = ( treeNode, text ) => { treeNode.Name = text; SGPLogger.Info( $"renamed to {text}" ); };
 		_tree.CanDrag = treeNode => treeNode is not PaletteCategoryNode;
-		_tree.OnItemDropped = ( treeNode1, treeNode2 ) => SGPLogger.Info( $"dropped" );
 
 		AddChild( _tree );
 
