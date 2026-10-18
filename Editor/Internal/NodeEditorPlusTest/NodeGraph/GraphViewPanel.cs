@@ -54,6 +54,8 @@ public class GraphViewPanel : NodeGraphPanel
 	/// </summary>
 	protected virtual INodeType CommentNodeType => null;
 
+	protected virtual INodeType RerouteNodeType { get; }
+
 	static readonly Vector2 DefaultCommentSize = new( 300f, 192f );
 
 	protected override NodePanel CreateNodePanel( INode node, bool isPreview = false ) => node is ICommentNode
