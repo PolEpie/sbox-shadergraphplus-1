@@ -1,6 +1,6 @@
 using Editor;
 using Sandbox.UI;
-using EngineGraph = Sandbox.UI.NodeGraph;
+using EngineGraph = EngineNodeGraph;
 
 namespace NodeEditorPlusTest;
 

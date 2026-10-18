@@ -102,7 +102,7 @@ public class PreviewSettings
 
 [JsonConverter( typeof( ShaderGraphPlusConverter ) )]
 [AssetType( Name = ShaderGraphPlusGlobals.AssetTypeName, Extension = ShaderGraphPlusGlobals.AssetTypeExtension, Flags = AssetTypeFlags.NoEmbedding ), Icon( "account_tree" )]
-public partial class ShaderGraphPlus : IBlackboardNodeGraph, Sandbox.UI.NodeGraph.IGraph
+public partial class ShaderGraphPlus : IBlackboardNodeGraph, EngineNodeGraph.IGraph
 {
 	[Hide]
 	public int Version => 12;
@@ -117,7 +117,7 @@ public partial class ShaderGraphPlus : IBlackboardNodeGraph, Sandbox.UI.NodeGrap
 	IEnumerable<IGraphNode> INodeGraph.Nodes => Nodes;
 
 	[Hide, JsonIgnore]
-	IEnumerable<Sandbox.UI.NodeGraph.INode> Sandbox.UI.NodeGraph.IGraph.Nodes => Nodes;
+	IEnumerable<EngineNodeGraph.INode> EngineNodeGraph.IGraph.Nodes => Nodes;
 
 	[Hide, JsonIgnore]
 	public IEnumerable<BlackboardParameter> Parameters => _parameters.Values;
@@ -666,12 +666,12 @@ public partial class ShaderGraphPlus : IBlackboardNodeGraph, Sandbox.UI.NodeGrap
 		RemoveNode( (BaseNodePlus)node );
 	}
 
-	void Sandbox.UI.NodeGraph.IGraph.AddNode( Sandbox.UI.NodeGraph.INode node )
+	void EngineNodeGraph.IGraph.AddNode( EngineNodeGraph.INode node )
 	{
 		AddNode( (BaseNodePlus)node );
 	}
 
-	void Sandbox.UI.NodeGraph.IGraph.RemoveNode( Sandbox.UI.NodeGraph.INode node )
+	void EngineNodeGraph.IGraph.RemoveNode( EngineNodeGraph.INode node )
 	{
 		RemoveNode( (BaseNodePlus)node );
 	}

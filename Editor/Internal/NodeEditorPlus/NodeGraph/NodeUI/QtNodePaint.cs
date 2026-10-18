@@ -1,5 +1,5 @@
 using Editor;
-using Sandbox.UI.NodeGraph;
+using EngineNodeGraph;
 using System.Runtime.CompilerServices;
 
 namespace NodeEditorPlus;

@@ -72,15 +72,15 @@ public sealed class ShaderGraphPlusViewPanel : GraphViewPanel
 		AvailableParameters.TryAdd( parameterType.Identifier, parameterType );
 	}
 
-	protected override Sandbox.UI.NodeGraph.NodeHandleConfig OnGetHandleConfig( Type type )
+	protected override EngineNodeGraph.NodeHandleConfig OnGetHandleConfig( Type type )
 	{
 		if ( ShaderGraphPlusTheme.NodeHandleConfigs.TryGetValue( type, out var config ) )
 		{
-			var shape = Enum.TryParse<Sandbox.UI.NodeGraph.HandleShape>( config.Shape.ToString(), out var mapped )
+			var shape = Enum.TryParse<EngineNodeGraph.HandleShape>( config.Shape.ToString(), out var mapped )
 				? mapped
-				: Sandbox.UI.NodeGraph.HandleShape.Square;
+				: EngineNodeGraph.HandleShape.Square;
 
-			return new Sandbox.UI.NodeGraph.NodeHandleConfig( config.Name, config.Color, shape );
+			return new EngineNodeGraph.NodeHandleConfig( config.Name, config.Color, shape );
 		}
 
 		return base.OnGetHandleConfig( type );

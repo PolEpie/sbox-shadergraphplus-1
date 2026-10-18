@@ -1,6 +1,6 @@
 ﻿using Editor;
 using ShaderGraphPlus.Nodes;
-using EngineGraph = Sandbox.UI.NodeGraph;
+using EngineGraph = EngineNodeGraph;
 
 namespace ShaderGraphPlus;
 
@@ -195,7 +195,7 @@ public abstract class BaseNodePlus : IGraphNode, EngineGraph.INode
 	/// <summary>
 	/// Draw over the node, in both the Qt and the panel graph.
 	/// </summary>
-	public virtual void OnPaint<T>( T paint, Rect rect ) where T : Sandbox.UI.NodeGraph.INodePaint, allows ref struct { }
+	public virtual void OnPaint<T>( T paint, Rect rect ) where T : EngineNodeGraph.INodePaint, allows ref struct { }
 
 	public virtual void OnDoubleClick( MouseEvent e )
 	{

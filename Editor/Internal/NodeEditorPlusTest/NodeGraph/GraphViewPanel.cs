@@ -1,6 +1,6 @@
 using Editor;
 using Sandbox.UI;
-using Sandbox.UI.NodeGraph;
+using EngineNodeGraph;
 using ShaderGraphPlus;
 using ShaderGraphPlusPanelTest;
 

@@ -2,7 +2,7 @@ using NodeEditorPlus;
 using Editor;
 using Sandbox.UI;
 using ShaderGraphPlus;
-using EngineGraph = Sandbox.UI.NodeGraph;
+using EngineGraph = EngineNodeGraph;
 
 namespace ShaderGraphPlusPanelTest;
 

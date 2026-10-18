@@ -1,6 +1,6 @@
 using NodeEditorPlusTest;
 using ShaderGraphPlus;
-using EngineGraph = Sandbox.UI.NodeGraph;
+using EngineGraph = EngineNodeGraph;
 
 namespace ShaderGraphPlusPanelTest;
 
