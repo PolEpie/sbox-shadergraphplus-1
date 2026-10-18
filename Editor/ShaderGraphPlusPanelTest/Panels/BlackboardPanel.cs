@@ -777,7 +777,7 @@ internal sealed class ParameterRow : Panel
 		{
 			// The asset browser's thumbnail; the path is on hover
 			var thumb = value.Add.Panel( "thumb" );
-			thumb.Style.BackgroundImage = Texture.Load( $"thumb:{texture.DefaultTexture}" );
+			thumb.Style.BackgroundImage = Texture.Load( $"{texture.DefaultTexture}" );
 			thumb.Tooltip = texture.DefaultTexture;
 			return;
 		}
