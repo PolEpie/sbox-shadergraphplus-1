@@ -12,6 +12,8 @@ public sealed class PalettePanel : Panel
 
 	private readonly Sandbox.UI.TreeView<PaletteTreeNode> _tree;
 
+	private bool _wasDragging;
+
 	public PalettePanel( bool isSubgraph ) : base()
 	{
 		_isSubgraph = isSubgraph;
@@ -26,7 +28,7 @@ public sealed class PalettePanel : Panel
 		_tree.GetParent = treeNode => treeNode.Parent;
 		_tree.CanExpand = treeNode => treeNode.CanHaveChildren;
 		_tree.GetHeight = treeNode => treeNode is PaletteCategoryNode ? 30 : Theme.RowHeight;
-		_tree.GetTooltip = treeNode => treeNode.ToolTip;
+		_tree.GetTooltip = treeNode => _tree.IsDragging ? null : treeNode.ToolTip;
 		_tree.OnRow = OnRow;
 		_tree.OnSelect = treeNode => SGPLogger.Info( $"selected {treeNode.Name}" );
 		_tree.OnActivate = treeNode => SGPLogger.Info( $"activated {treeNode.Name}" );
@@ -37,6 +39,20 @@ public sealed class PalettePanel : Panel
 		AddChild( _tree );
 
 		UpdateTree();
+	}
+
+	public override void Tick()
+	{
+		base.Tick();
+
+		// During a drag the engine freezes hover on the source row, so its tooltip would open
+		// mid-drag and hang where it opened. GetTooltip only runs on bind, so rebind on the
+		// transition to drop row tooltips while dragging and restore them after.
+		if ( _tree.IsDragging == _wasDragging )
+			return;
+
+		_wasDragging = _tree.IsDragging;
+		_tree.RebindRows();
 	}
 
 	private void OnRow( Sandbox.UI.TreeRow row, PaletteTreeNode node )

@@ -60,6 +60,12 @@ public sealed class NodeCardUI : Panel
 	}
 
 	/// <summary>
+	/// No tooltip while the card is being dragged: the editor's tooltip window stays where it
+	/// opened, so it would hang behind the moving card.
+	/// </summary>
+	public override bool HasTooltip => _header is not { IsDragging: true } && base.HasTooltip;
+
+	/// <summary>
 	/// Put the card's top left at <paramref name="position"/>, in canvas coordinates.
 	/// </summary>
 	public void MoveTo( Vector2 position )

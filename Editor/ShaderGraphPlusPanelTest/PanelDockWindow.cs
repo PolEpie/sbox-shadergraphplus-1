@@ -8,9 +8,6 @@ namespace ShaderGraphPlusPanelTest;
 /// </summary>
 public class PanelDockWindow : Panel
 {
-	[SkipHotload]
-	protected static PanelWindow _window;
-
 	protected Sandbox.UI.Label _maximizeIcon;
 
 	protected string _defaultLayout;
@@ -22,6 +19,11 @@ public class PanelDockWindow : Panel
 
 	public DockHost DockHost { get; private set; }
 	public PanelDockWindows DockWindows { get; private set; }
+
+	/// <summary>
+	/// The window this panel is shown in. Looked up rather than stored, so it survives hotload.
+	/// </summary>
+	protected PanelWindow Window => PanelWindow.FromPanel( this );
 
 	public PanelDockWindow() : base()
 	{
@@ -65,7 +67,10 @@ public class PanelDockWindow : Panel
 
 	public void UpdateMaximizeIcon()
 	{
-		_maximizeIcon.Text = _window.IsMaximized ? "filter_none" : "crop_square";
+		if ( Window is not { } window )
+			return;
+
+		_maximizeIcon.Text = window.IsMaximized ? "filter_none" : "crop_square";
 	}
 
 	public override void OnDeleted()
