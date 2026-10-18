@@ -1,5 +1,6 @@
 using Editor;
 using NodeEditorPlusTest;
+using Sandbox.Rendering;
 using Sandbox.UI;
 using Sandbox.UI.Construct;
 using ShaderGraphPlus;
@@ -9,10 +10,15 @@ namespace ShaderGraphPlusPanelTest;
 public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 {
 	private bool _dirty = false;
+	private bool _autoCompile = true;
+	private string _generatedCode;
 
-	public bool IsSubgraph => false;
-	public string FileType => ShaderGraphPlusGlobals.AssetTypeName;
-	public string FileExtension => ShaderGraphPlusGlobals.AssetTypeExtension;
+	private bool _isCompiling = false;
+	private bool _isPendingCompile = false;
+	private RealTimeSince _timeSinceCompile;
+
+	private Sandbox.UI.Menu _recentFilesMenu;
+	private readonly List<string> _recentFiles = new();
 
 	private ShaderGraphPlusViewPanel _graphView;
 	private PropertiesPanel _properties;
@@ -21,6 +27,22 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	private PreviewPanel _preview;
 
 	private ShaderGraphPlus.ShaderGraphPlus _graph;
+	private Asset _asset;
+
+	private readonly Dictionary<string, bool> _boolAttributes = new();
+	private readonly Dictionary<string, int> _intAttributes = new();
+	private readonly Dictionary<string, float> _floatAttributes = new();
+	private readonly Dictionary<string, Vector2> _float2Attributes = new();
+	private readonly Dictionary<string, Vector3> _float3Attributes = new();
+	private readonly Dictionary<string, Color> _float4Attributes = new();
+	private readonly Dictionary<string, SamplerState> _samplerStateAttributes = new();
+	private readonly Dictionary<string, Texture> _textureAttributes = new();
+	private readonly Dictionary<string, int> _dynamicComboIntAttributes = new();
+	private readonly Dictionary<string, int> _shaderFeatures = new();
+
+	public bool IsSubgraph => false;
+	public string FileType => ShaderGraphPlusGlobals.AssetTypeName;
+	public string FileExtension => ShaderGraphPlusGlobals.AssetTypeExtension;
 
 	[Menu( "Editor", "Shader Graph Plus/NewEditorTest", "schema" )]
 	public static void OpenNewEditorTest()
@@ -44,8 +66,18 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		Style.FlexDirection = FlexDirection.Column;
 
+		_graph = new ShaderGraphPlus.ShaderGraphPlus()
+		{
+			Title = "untitled",
+			IsSubgraph = IsSubgraph
+		};
+
+		_recentFiles = Editor.FileSystem.Temporary.ReadJsonOrDefault( "shadergraphplus_recentfiles.json", _recentFiles )
+			.Where( x => System.IO.File.Exists( x ) ).ToList();
+
 		BuildMenuBar();
 		CreateToolBar();
+
 		CreateUI();
 
 		CreateNew();
@@ -88,6 +120,10 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		file.AddSeparator();
 
+		_recentFilesMenu = file.AddMenu( "Recent Files" );
+
+		file.AddSeparator();
+
 		Option( file, "Quit", "logout", "Alt+F4", Quit );
 
 		var edit = menus.AddMenu( "Edit" );
@@ -120,6 +156,8 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		view.AddSeparator();
 
 		Option( view, "Full Screen", "F11", "", () => { Window?.ToggleMaximized(); UpdateMaximizeIcon(); } );
+
+		RefreshRecentFiles();
 
 		bar.Add.Panel( "grow" );
 
@@ -263,16 +301,59 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	{
 		SGPLogger.Info( $"TODO : New Graph" );
 
-		_graph = new ShaderGraphPlus.ShaderGraphPlus { IsSubgraph = IsSubgraph };
-		_blackboard.Graph = _graph;
-		_properties.Target = _graph;
+		_asset = null;
+		_graph = new()
+		{
+			Title = "untitled"
+		};
+		_dirty = false;
+
+		// Must be done before setting _graphView.Graph and _blackboardView.Graph
+		// or else some nodes, namely the 'Result' node may break valid inputs upon it getting initialized via GraphView.RebuildFromGraph().
+		//LoadShaderTypeInfo(); // TODO
 
 		_graphView.Graph = _graph;
+		_blackboard.Graph = _graph;
+
+		UpdateTitle();
+
+		// TODO
+		//_preview.Model = null;
+		//_preview.Tint = Color.White;
+		//_undoStack.Clear();
+		//_undoHistory.History = _undoStack.Names;
+		_generatedCode = "";
+		//_generatedCodeTextView.Value = "";
+		//Selection.Set( _graph );
+
+		// TODO
+		//_output.ClearErrors();
+		//_output.ClearWarnings();
 
 		if ( !IsSubgraph )
 		{
 			var result = _graphView.CreateNewNode( _graphView.FindNodeType( typeof( Result ) ), 0 );
 		}
+
+		ClearAttributes();
+		RestoreShader();
+	}
+
+	private void ClearAttributes()
+	{
+		_boolAttributes.Clear();
+		_intAttributes.Clear();
+		_floatAttributes.Clear();
+		_float2Attributes.Clear();
+		_float3Attributes.Clear();
+		_float4Attributes.Clear();
+		_textureAttributes.Clear();
+		_samplerStateAttributes.Clear();
+		_dynamicComboIntAttributes.Clear();
+		_shaderFeatures.Clear();
+
+		// TODO
+		//_preview?.ClearAttributes();
 	}
 
 	public void Open()
@@ -295,7 +376,48 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	{
 		SGPLogger.Info( $"TODO : Open Graph" );
 
+		var asset = AssetSystem.FindByPath( path );
+
+		if ( asset == null )
+			return;
+
+		if ( asset == _asset )
+		{
+			Focus();
+			return;
+		}
+
+		var graph = JsonSerializer.Deserialize<ShaderGraphPlus.ShaderGraphPlus>( System.IO.File.ReadAllText( path ), ShaderGraphPlus.ShaderGraphPlus.SerializerOptions() );
+		graph.Path = asset.RelativePath;
+		graph.IsSubgraph = IsSubgraph;
+
+		if ( !graph.IsSubgraph )
+		{
+			graph.Title = asset.Name;
+		}
+
+		//_preview.Model = string.IsNullOrWhiteSpace( graph.Model ) ? null : Model.Load( graph.Model );
 		_preview.LoadSettings( new() );
+
+		_asset = asset;
+		_graph = graph;
+		_dirty = false;
+
+		// Must be done before setting _graphView.Graph and _blackboardView.Graph
+		// or else some nodes, namely the 'Result' node may break valid inputs upon it getting initialized via GraphView.RebuildFromGraph().
+		//LoadShaderTypeInfo(); // TOOD
+
+		_graphView.Graph = _graph;
+		_blackboard.Graph = _graph;
+
+		UpdateTitle();
+
+		// TODO
+		//_undoStack.Clear();
+		//_undoHistory.History = _undoStack.Names;
+		_generatedCode = "";
+		//_generatedCodeTextView.Value = "";
+		//Selection.Set( _graph );
 	}
 
 	public void SaveAs()
@@ -375,6 +497,80 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 			GeneratePreviewCode();
 	}
 
+	private void RestoreShader()
+	{
+		if ( !_preview.IsValid() )
+			return;
+
+		// TODO
+		//_preview.Material = Material.Load( "materials/core/shader_editor.vmat" );
+	}
+
+	private void UpdateTitle()
+	{
+		WindowTitle.Text = $"Shader Graph Plus - {_asset?.Path ?? "untitled"}{(_dirty ? "*" : "")}";
+	}
+
+	void RefreshRecentFiles()
+	{
+		_recentFilesMenu.Enabled = _recentFiles.Count > 0;
+
+		_recentFilesMenu.Clear();
+
+		_recentFilesMenu.AddOption( "Clear recent files", null, ClearRecentFiles );
+		//.StatusTip = "Clear recent files";
+
+		_recentFilesMenu.AddSeparator();
+
+		const int maxFilesToDisplay = 10;
+		int fileCount = 0;
+
+		for ( int i = _recentFiles.Count - 1; i >= 0; i-- )
+		{
+			if ( fileCount >= maxFilesToDisplay )
+				break;
+
+			var filePath = _recentFiles[i];
+
+			_recentFilesMenu.AddOption( $"{++fileCount} - {filePath}", null, () => PromptSave( () => Open( filePath ) ) );
+			//.StatusTip = $"Open {filePath}";
+		}
+	}
+
+	private void ClearRecentFiles()
+	{
+		if ( _recentFiles.Count == 0 )
+			return;
+
+		_recentFiles.Clear();
+
+		RefreshRecentFiles();
+
+		SaveRecentFiles();
+	}
+
+	private void AddToRecentFiles( string filePath )
+	{
+		filePath = filePath.ToLower();
+
+		// If file is already recent, remove it so it'll become the most recent
+		if ( _recentFiles.Contains( filePath ) )
+		{
+			_recentFiles.RemoveAll( x => x == filePath );
+		}
+
+		_recentFiles.Add( filePath );
+
+		RefreshRecentFiles();
+		SaveRecentFiles();
+	}
+
+	private void SaveRecentFiles()
+	{
+		Editor.FileSystem.Temporary.WriteJson( "shadergraphplus_recentfiles.json", _recentFiles );
+	}
+
+
 	/// <summary>
 	/// Re-add the stylesheet so a hotload picks up its new text.
 	/// </summary>
@@ -398,10 +594,5 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		_preview.LoadSettings( new() );
 
 		Log.Info( "ShaderGraphPlus hotloaded!" );
-	}
-
-	private void UpdateTitle()
-	{
-		WindowTitle.Text = $"Shader Graph Plus - untitled{(_dirty ? "*" : "")}";
 	}
 }
