@@ -31,17 +31,15 @@ public sealed class BlackboardPanel : Panel
 	/// </summary>
 	public Action<BlackboardParameter> OnSelected { get; set; }
 
-	private ShaderGraphPlus.ShaderGraphPlus _graph;
-
 	/// <summary>
 	/// The graph whose parameters are listed. Setting it rebuilds the list.
 	/// </summary>
 	public ShaderGraphPlus.ShaderGraphPlus Graph
 	{
-		get => _graph;
+		get => field;
 		set
 		{
-			_graph = value;
+			field = value;
 			Select( null );
 			Rebuild();
 		}
@@ -94,7 +92,7 @@ public sealed class BlackboardPanel : Panel
 	{
 		menu.Clear();
 
-		if ( _graph is null )
+		if ( Graph is null )
 			return;
 
 		var types = BlackboardParameter.GetRelevantParameters( _parameterTypes, _isSubgraph )
@@ -138,20 +136,20 @@ public sealed class BlackboardPanel : Panel
 
 	private void CreateParameter( IBlackboardParameterType type )
 	{
-		var parameter = (BlackboardParameter)type.CreateParameter( _graph );
+		var parameter = (BlackboardParameter)type.CreateParameter( Graph );
 
 		// Default group, like the Qt blackboard
 		var groupName = parameter.GetGroupTitle();
-		if ( _graph.TryFindGroupData( groupName, out var group ) )
+		if ( Graph.TryFindGroupData( groupName, out var group ) )
 		{
 			group.ParameterReferences.Add( parameter.Identifier );
 		}
 		else
 		{
-			_graph.AddGroupData( new GroupData( [parameter.Identifier] ) { Name = groupName }, 0 );
+			Graph.AddGroupData( new GroupData( [parameter.Identifier] ) { Name = groupName }, 0 );
 		}
 
-		_graph.AddParameter( parameter );
+		Graph.AddParameter( parameter );
 
 		_searchFilter.SetValue( "" );
 		_filter = "";
@@ -163,7 +161,7 @@ public sealed class BlackboardPanel : Panel
 	/// </summary>
 	internal void Remove( BlackboardParameter parameter )
 	{
-		var nodes = _graph.Nodes
+		var nodes = Graph.Nodes
 			.Where( x => x is IBlackboardNode node && node.ParameterIdentifier == parameter.Identifier )
 			.ToArray();
 
@@ -171,20 +169,20 @@ public sealed class BlackboardPanel : Panel
 		{
 			foreach ( var node in nodes )
 			{
-				_graph.RemoveNode( node );
+				Graph.RemoveNode( node );
 			}
 
-			_graph.RemoveParameter( parameter );
+			Graph.RemoveParameter( parameter );
 
 			if ( _selected == parameter )
 				Select( null );
 
-			if ( _graph.TryFindGroupData( parameter.GetGroupTitle(), out var group ) )
+			if ( Graph.TryFindGroupData( parameter.GetGroupTitle(), out var group ) )
 			{
 				group.ParameterReferences.Remove( parameter.Identifier );
 
 				if ( group.ParameterReferences.Count == 0 )
-					_graph.RemoveGroupData( group );
+					Graph.RemoveGroupData( group );
 			}
 
 			Rebuild();
@@ -228,13 +226,13 @@ public sealed class BlackboardPanel : Panel
 	{
 		_list.DeleteChildren( true );
 
-		var parameters = _graph?.Parameters.Where( MatchesFilter ).ToArray() ?? [];
+		var parameters = Graph?.Parameters.Where( MatchesFilter ).ToArray() ?? [];
 
 		_list.SetClass( "is-empty", parameters.Length == 0 );
 
 		if ( parameters.Length == 0 )
 		{
-			_list.Add.Label( _graph is null ? "No graph open" : !string.IsNullOrEmpty( _filter ) ? "No matching parameters" : "No parameters yet - add one with +", "empty" );
+			_list.Add.Label( Graph is null ? "No graph open" : !string.IsNullOrEmpty( _filter ) ? "No matching parameters" : "No parameters yet - add one with +", "empty" );
 			return;
 		}
 
