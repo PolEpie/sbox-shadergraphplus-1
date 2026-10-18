@@ -35,9 +35,17 @@ public class CommentPanel : NodePanel
 	public CommentPanel( GraphViewPanel graph, INode node, bool isPreview = false ) : base( graph, node, isPreview )
 	{
 		AddClass( "comment" );
+	}
 
-		// Render order is sibling index plus z-index, so this has to outweigh any number of nodes
-		Style.ZIndex = -100000;
+	/// <summary>
+	/// Sit behind the nodes by going first among them. A negative z-index would too, but once the
+	/// render order goes below zero the mouse goes through to the canvas.
+	/// </summary>
+	public override void OnParentChanged()
+	{
+		base.OnParentChanged();
+
+		if ( Parent is { } parent ) parent.SetChildIndex( this, 0 );
 	}
 
 	/// <summary>
