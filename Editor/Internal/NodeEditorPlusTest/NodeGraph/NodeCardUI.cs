@@ -7,7 +7,7 @@ namespace NodeEditorPlusTest;
 /// A shader node placed on the graph canvas. Lives in <see cref="CanvasPanel.Content"/>, so it pans
 /// and zooms with the grid. Drag the header to move it; it follows the cursor freely and snaps to the grid on release.
 /// </summary>
-public sealed class NodeCardUI : Panel
+public class NodeCardUI : Panel
 {
 	/// <summary>
 	/// The <see cref="ShaderGraphPlus.ShaderNodePlus"/> type this card stands for.
