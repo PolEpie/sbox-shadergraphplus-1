@@ -1,8 +1,11 @@
+using Editor;
 using Sandbox.Rendering;
 using Sandbox.UI;
 using Sandbox.UI.Construct;
 using ShaderGraphPlus;
 using System.Globalization;
+
+using static ShaderGraphPlus.ShaderGraphPlusGlobals;
 
 namespace ShaderGraphPlusPanelTest;
 
@@ -20,6 +23,9 @@ public sealed class BlackboardPanel : Panel
 
 	private readonly Dictionary<string, IBlackboardParameterType> _availableParameters = new( StringComparer.OrdinalIgnoreCase );
 
+	private readonly HashSet<string> _collapsedGroups;
+	private string CollapsedGroupsCookie => EditorCookieNames.ShaderGraphPlusBlackboardCollapsedGroupsCookie;
+
 	/// <summary>
 	/// The currently selected parameter.
 	/// </summary>
@@ -31,6 +37,8 @@ public sealed class BlackboardPanel : Panel
 	public Action<BlackboardParameter> OnSelected { get; set; }
 
 	public Action<bool> OnDirty { get; set; }
+
+	public Action OnParameterNodesDeleted { get; set; }
 
 	public ShaderGraphPlus.ShaderGraphPlus Graph
 	{
@@ -65,6 +73,23 @@ public sealed class BlackboardPanel : Panel
 		} );
 	}
 
+	private void BuildToolbar()
+	{
+		var toolbar = AddChild( new Toolbar() );
+		toolbar.AddClass( "panetools" );
+
+		_searchFilter = toolbar.AddChild( new TextInput( "Filter..", "search" ) );
+		_searchFilter.OnChange = value =>
+		{
+			_filter = value?.Trim() ?? "";
+			BuildFromParameters( Graph.Parameters );
+		};
+
+		var addMenu = new Sandbox.UI.Menu();
+		addMenu.AboutToShow += AddParameterOptions;
+		toolbar.AddMenu( "", "add", addMenu ).Tooltip = "Add parameter";
+	}
+
 	public void AddParameterType<T>() where T : BlackboardParameter
 	{
 		AddParameterType( EditorTypeLibrary.GetType<T>() );
@@ -79,24 +104,25 @@ public sealed class BlackboardPanel : Panel
 
 	private void CreateNewParameter( IBlackboardParameterType type, string group = "" )
 	{
-		//group = NormalizeGroup( group );
+		group = NormalizeGroup( group );
 
 		_searchFilter.SetValue( "" );
 		_filter = "";
-		//ExpandGroup( group );
+		ExpandGroup( group );
 
+		// TODO
 		//using var undoScope = UndoScope( "Add Parameter" );
 
 		var parameter = (BlackboardParameter)type.CreateParameter( Graph );
 
-		//if ( parameter is IGroupableBlackboardParameter groupable )
-		//{
-		//	SetGroupData( group, group, groupable );
-		//}
+		if ( parameter is IGroupableBlackboardParameter groupable )
+		{
+			SetGroupData( group, group, groupable );
+		}
 
 		Graph.AddParameter( parameter );
 
-		//RebuildParameterOrder();
+		RebuildParameterOrder();
 
 		OnDirty?.Invoke( true );
 
@@ -110,48 +136,32 @@ public sealed class BlackboardPanel : Panel
 		if ( type == null )
 			return null;
 
-		//var group = NormalizeGroup( "" );
+		var group = NormalizeGroup( "" );
 
+		_searchFilter.SetValue( "" );
 		_filter = "";
-		//ExpandGroup( group );
+		ExpandGroup( group );
 
 		var parameter = type.CreateParameter( Graph, name );
 
 		if ( parameter == null )
 			return null;
 
-		//if ( parameter is IGroupableBlackboardParameter groupable )
-		//{
-		//	SetGroupData( group, group, groupable );
-		//}
+		if ( parameter is IGroupableBlackboardParameter groupable )
+		{
+			SetGroupData( group, group, groupable );
+		}
 
 		onCreated?.Invoke();
 
 		Graph.AddParameter( parameter );
 
-		//RebuildParameterOrder();
+		RebuildParameterOrder();
 
 		return parameter;
 	}
 
-	private void BuildToolbar()
-	{
-		var toolbar = AddChild( new Toolbar() );
-		toolbar.AddClass( "panetools" );
-
-		_searchFilter = toolbar.AddChild( new TextInput( "Filter..", "search" ) );
-		_searchFilter.OnChange = value =>
-		{
-			_filter = value?.Trim() ?? "";
-			BuildFromParameters( Graph.Parameters );
-		};
-
-		var addMenu = new Sandbox.UI.Menu();
-		addMenu.AboutToShow += BuildAddMenu;
-		toolbar.AddMenu( "", "add", addMenu ).Tooltip = "Add parameter";
-	}
-
-	private void BuildAddMenu( Sandbox.UI.Menu menu )
+	private void AddParameterOptions( Sandbox.UI.Menu menu )
 	{
 		void AddOption( Sandbox.UI.Menu menu, IBlackboardParameterType parameterType, string icon, string description )
 		{
@@ -228,21 +238,28 @@ public sealed class BlackboardPanel : Panel
 	/// </summary>
 	internal void Remove( BlackboardParameter parameter )
 	{
-		var nodes = Graph.Nodes
+		var parameterNodes = Graph.Nodes
 			.Where( x => x is IBlackboardNode node && node.ParameterIdentifier == parameter.Identifier )
 			.ToArray();
 
 		void Delete()
 		{
-			foreach ( var node in nodes )
+			foreach ( var node in parameterNodes )
 			{
 				Graph.RemoveNode( node );
+			}
+
+			if ( parameterNodes.Any() )
+			{
+				OnParameterNodesDeleted?.Invoke();
 			}
 
 			Graph.RemoveParameter( parameter );
 
 			if ( Selected == parameter )
 				Select( null );
+
+			RemoveParameterFromGroupData( parameter );
 
 			if ( Graph.TryFindGroupData( parameter.GetGroupTitle(), out var group ) )
 			{
@@ -252,10 +269,12 @@ public sealed class BlackboardPanel : Panel
 					Graph.RemoveGroupData( group );
 			}
 
+			RebuildParameterOrder();
+
 			BuildFromParameters( Graph.Parameters );
 		}
 
-		if ( nodes.Length == 0 )
+		if ( parameterNodes.Length == 0 )
 		{
 			Delete();
 			return;
@@ -263,7 +282,7 @@ public sealed class BlackboardPanel : Panel
 
 		new Editor.PopupWindow(
 			"Delete Parameter",
-			$"Delete '{parameter.Name}'?\n\nIs referenced by {nodes.Length} parameter node{(nodes.Length == 1 ? "" : "s")}. These references will be cleared.",
+			$"Delete '{parameter.Name}'?\n\nIs referenced by {parameterNodes.Length} parameter node{(parameterNodes.Length == 1 ? "" : "s")}. These references will be cleared.",
 			"Cancel",
 			new Dictionary<string, Action> { ["Delete"] = Delete } ).Show();
 	}
@@ -284,6 +303,158 @@ public sealed class BlackboardPanel : Panel
 		}
 
 		OnSelected?.Invoke( (BlackboardParameter)parameter );
+	}
+
+	private void ExpandGroup( string group )
+	{
+		if ( _collapsedGroups.Remove( group ) )
+			SaveCollapsedGroups();
+	}
+
+	private void PruneCollapsedGroups()
+	{
+		var groups = Graph.Parameters.OfType<IGroupableBlackboardParameter>().Select( GroupName ).ToHashSet( StringComparer.OrdinalIgnoreCase );
+		_collapsedGroups.RemoveWhere( group => !groups.Contains( group ) );
+		SaveCollapsedGroups();
+	}
+
+	private void SaveCollapsedGroups()
+		=> EditorCookie.Set( CollapsedGroupsCookie, _collapsedGroups.OrderBy( x => x ).ToList() );
+
+	private void SetGroupData( string sourceGroupName, string targetGroupName, IGroupableBlackboardParameter parameter, bool renaming = false )
+	{
+		void RemoveParameterFromGroup( GroupData group )
+		{
+			group.ParameterReferences.Remove( parameter.Identifier );
+
+			if ( group.ParameterReferences.Count == 0 )
+			{
+				Graph.RemoveGroupData( group );
+			}
+		}
+
+		if ( Graph is null )
+			return;
+
+		sourceGroupName = GroupTitle( sourceGroupName );
+		parameter.Group = targetGroupName;
+		targetGroupName = GroupTitle( targetGroupName );
+
+		//SGPLogger.Info( $"Moving Parameter \"{parameter.Name}\" from group \"{sourceGroupName}\" to group \"{targetGroupName}\"" );
+
+		if ( renaming )
+		{
+			if ( Graph.TryFindGroupData( targetGroupName, out var targetGroupData ) )
+			{
+				if ( Graph.TryFindGroupData( sourceGroupName, out var sourceGroupData ) )
+				{
+					RemoveParameterFromGroup( sourceGroupData );
+				}
+
+				if ( !targetGroupData.ParameterReferences.Contains( parameter.Identifier ) )
+				{
+					targetGroupData.ParameterReferences.Add( parameter.Identifier );
+				}
+			}
+			else if ( Graph.TryFindGroupData( sourceGroupName, out var sourceGroupData ) )
+			{
+				// Just rename the source group to the targetGroupName
+				// if a group with the targetGroupName does not exist yet.
+				sourceGroupData.Name = targetGroupName;
+			}
+		}
+		else
+		{
+			if ( Graph.TryFindGroupData( sourceGroupName, out var sourceGroupData ) && !sourceGroupName.Equals( targetGroupName, StringComparison.OrdinalIgnoreCase ) )
+			{
+				RemoveParameterFromGroup( sourceGroupData );
+			}
+
+			if ( Graph.TryFindGroupData( targetGroupName, out var existingGroup ) )
+			{
+				existingGroup.ParameterReferences.Add( parameter.Identifier );
+			}
+			else
+			{
+				var newGroup = new GroupData
+				{
+					Name = targetGroupName,
+					ParameterReferences = [parameter.Identifier]
+				};
+
+				Graph.AddGroupData( newGroup, targetGroupName.Equals( BlackboardGlobals.EmptyGroupName, StringComparison.OrdinalIgnoreCase ) ? 0 : -1 );
+			}
+		}
+	}
+
+	private void RemoveParameterFromGroupData( BlackboardParameter parameter )
+	{
+		if ( Graph is null )
+			return;
+
+		var group = string.IsNullOrWhiteSpace( parameter.Group ) ? BlackboardGlobals.EmptyGroupName : parameter.Group;
+
+		if ( Graph.TryFindGroupData( group, out var groupData ) )
+		{
+			groupData.ParameterReferences.Remove( parameter.Identifier );
+
+			if ( groupData.ParameterReferences.Count == 0 )
+			{
+				Graph.RemoveGroupData( groupData );
+			}
+		}
+	}
+
+	internal void RenameGroup( string oldName )
+	{
+		if ( string.IsNullOrEmpty( oldName ) )
+			return;
+
+		OpenGroupNameDialog( "Rename Parameter Group", oldName, newName =>
+		{
+			newName = NormalizeGroup( newName );
+			if ( newName.Equals( oldName, StringComparison.OrdinalIgnoreCase ) )
+				return;
+
+			// TODO
+			//using var undoScope = UndoScope( "Rename Parameter Group" );
+
+			foreach ( var parameter in Graph.Parameters.Where( p => GroupName( p ).Equals( oldName, StringComparison.OrdinalIgnoreCase ) ) )
+			{
+				SetGroupData( oldName, newName, parameter, true );
+			}
+
+			if ( GroupTitle( newName ).Equals( BlackboardGlobals.EmptyGroupName, StringComparison.OrdinalIgnoreCase ) )
+			{
+				Graph.ReOrderGroup( BlackboardGlobals.EmptyGroupName, 0 );
+			}
+
+			RebuildParameterOrder();
+
+			if ( _collapsedGroups.Remove( oldName ) && !string.IsNullOrEmpty( newName ) )
+				_collapsedGroups.Add( newName );
+
+			PruneCollapsedGroups();
+		} );
+	}
+
+	internal void ClearGroup( string group )
+	{
+		if ( string.IsNullOrEmpty( group ) )
+			return;
+
+		//using var undoScope = UndoScope( "Remove Parameter Group" );
+
+		foreach ( var parameter in Graph.Parameters.Where( p => GroupName( p ).Equals( group, StringComparison.OrdinalIgnoreCase ) ) )
+		{
+			// Migrate each parameter to the 'General' group.
+			SetGroupData( parameter.Group, "", parameter );
+		}
+
+		RebuildParameterOrder();
+
+		_collapsedGroups.Remove( group );
+		SaveCollapsedGroups();
 	}
 
 	/// <summary>
@@ -317,6 +488,92 @@ public sealed class BlackboardPanel : Panel
 			BuildFromParameters( parameters, preserveSelection );
 		}
 	}
+
+	internal void RebuildParameterOrder()
+	{
+		var parameterReferences = new HashSet<Guid>();
+
+		// Group 1 : 0,1 ---> 0,1
+		// Group 2 : 0,1,2,3 ---> 2,3,4,5
+		// Group 3 : 0 ---> 6
+		// Resulting new index's for each parameter in Graph.Parameters : 0,1,2,3,4,5,6
+
+		foreach ( var group in Graph.GroupData )
+		{
+			foreach ( var parameterReference in group.ParameterReferences )
+			{
+				var parameter = Graph.FindParameter( parameterReference );
+
+				if ( parameterReferences.Add( parameterReference ) )
+				{
+					/*
+					var currentIndex = parameterReferences.Count;
+					SGPLogger.Info( $"Parameter \"{parameter.Name}\" at index \"{( currentIndex > 0 ? currentIndex - 1 : currentIndex )}\"" );
+					*/
+				}
+			}
+		}
+
+		foreach ( var (parameterIndex, parameterIdentifier) in parameterReferences.Index() )
+		{
+			Graph.ReOrderParameter( parameterIdentifier, parameterIndex );
+		}
+	}
+
+	
+	internal void OnGraphDirty()
+	{
+		if ( Graph is null )
+			return;
+
+		/*
+		var parameters = Graph.Parameters.ToList();
+		*/
+	}
+
+
+	private void OpenGroupNameDialog( string title, string initialValue, Action<string> accepted )
+	{
+		Dialog.AskString(
+			name => accepted( name.Trim() ),
+			"Group name:",
+			okay: "Apply",
+			initialName: initialValue,
+			title: title,
+			minLength: 1
+		);
+	}
+
+	private IEnumerable<string> ExistingGroups() => Graph.Parameters.OfType<IGroupableBlackboardParameter>()
+	.Select( GroupName )
+	.Where( group => !string.IsNullOrEmpty( group ) )
+	.Distinct( StringComparer.OrdinalIgnoreCase )
+	.OrderBy( group => group, StringComparer.OrdinalIgnoreCase );
+
+	/// <summary>
+	/// Get a normalized version of <paramref name="group"/>.
+	/// </summary>
+	/// <param name="group"></param>
+	/// <returns>The <paramref name="group"/> string as-is, or if <paramref name="group"/> is "General" just an empty string.</returns>
+	private static string NormalizeGroup( string group )
+	{
+		group = group?.Trim() ?? "";
+		return group.Equals( BlackboardGlobals.EmptyGroupName, StringComparison.OrdinalIgnoreCase ) ? "" : group;
+	}
+
+	/// <summary>
+	/// Get a normalized version of the <paramref name="parameter"/> name.
+	/// </summary>
+	/// <param name="parameter"></param>
+	/// <returns>The <paramref name="parameter"/> name as-is, or if the <paramref name="parameter"/> is named "General" just an empty string.</returns>
+	internal static string GroupName( IGroupableBlackboardParameter parameter ) => NormalizeGroup( parameter.Group );
+
+	/// <summary>
+	/// Get a non null, empty or just whitespace version of the <paramref name="groupName"/>.
+	/// </summary>
+	/// <param name="groupName"></param>
+	/// <returns>The <paramref name="groupName"/> if it isnt null, empty or just whitespace, otherwise the empty group name.</returns>
+	internal static string GroupTitle( string groupName ) => string.IsNullOrWhiteSpace( groupName ) ? BlackboardGlobals.EmptyGroupName : groupName;
 
 	private bool MatchesFilter( BlackboardParameter parameter )
 	{

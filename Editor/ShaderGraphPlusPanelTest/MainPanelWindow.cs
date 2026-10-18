@@ -354,12 +354,15 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 	private string GeneratePreviewCode()
 	{
+		SGPLogger.Info( $"TODO : GeneratePreviewCode" );
+
 		return "";
 	}
 
 	private void SetDirty( bool evaluate = true )
 	{
 		_dirty = true;
+		_blackboard.OnGraphDirty();
 
 		UpdateTitle();
 
