@@ -208,7 +208,9 @@ public class GraphViewPanel : CanvasPanel
 		var pixelsPerUnit = viewport.Width / (max.x - min.x);
 
 		var step = GridSize;
-		var minLineSpacingPixels = GridSize / 2; 
+
+		// Minor lines closer than this on screen are merged, so zooming out never draws thousands of lines.
+		var minLineSpacingPixels = GridSize / 2;
 
 		while ( step * pixelsPerUnit < minLineSpacingPixels )
 		{
