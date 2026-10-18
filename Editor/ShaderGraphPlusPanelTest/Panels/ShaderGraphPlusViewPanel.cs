@@ -1,7 +1,8 @@
 ﻿using Editor.NodeEditor;
+using NodeEditorPlusTest;
+using Sandbox.Internal;
 using Sandbox.UI;
 using ShaderGraphPlus;
-using NodeEditorPlusTest;
 
 namespace ShaderGraphPlusPanelTest;
 
@@ -12,7 +13,7 @@ public sealed class ShaderGraphPlusViewPanel : GraphViewPanel
 
 	public ShaderGraphPlusViewPanel() : base()
 	{
-
+		SGPLogger.Info( $"TODO : ShaderGraphPlusViewPanel Constructor" );
 	}
 
 	public void AddNodeType<T>() where T : BaseNodePlus
@@ -40,5 +41,24 @@ public sealed class ShaderGraphPlusViewPanel : GraphViewPanel
 	public INodeType FindNodeType( Type type )
 	{
 		return AvailableNodes.TryGetValue( type.FullName!, out var nodeType ) ? nodeType : null;
+	}
+
+	//protected override TypeDescription GetPalleteType( Panel panel )
+	//{
+	//	if ( panel is not TreeRow { RowIndex: >= 0, Tree: TreeView<Node> palette } row ) return null;
+	//
+	//	return palette.GetRowItem( row.RowIndex ).Type;
+	//}
+
+	protected override INodeType NodeTypeFromPanelEvent( PanelEvent ev )
+	{
+		if ( ev.Target is TreeRow row && row.UserData is DisplayInfo info )
+		{
+			return AvailableNodes.TryGetValue( info.Fullname, out var type )
+				? type
+				: null;
+		}
+			
+		return null;
 	}
 }

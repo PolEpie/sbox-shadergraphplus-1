@@ -59,7 +59,7 @@ public class ClassNodeType : INodeType
 	{
 		//var node = Type.Create<BaseNodePlus>();
 
-		SGPLogger.Info( $"TODO Panel Version INodeType.CreateNode" );
+		SGPLogger.Info( $"TODO : Panel Version INodeType.CreateNode" );
 
 		return Type;
 	}

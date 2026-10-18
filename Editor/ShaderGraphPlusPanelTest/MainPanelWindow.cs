@@ -208,7 +208,9 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 	public void CreateNew()
 	{
-		SGPLogger.Info( $"New Graph" );
+		SGPLogger.Info( $"TODO : New Graph" );
+
+		_graphView.RebuildFromGraph();
 
 		if ( !IsSubgraph )
 		{
@@ -234,7 +236,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 	public void Open( string path, bool addToPath = true )
 	{
-		SGPLogger.Info( $"Open Graph" );
+		SGPLogger.Info( $"TODO : Open Graph" );
 
 		_preview.LoadSettings( new() );
 	}
@@ -251,51 +253,51 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 	private bool SaveInternal( bool saveAs )
 	{
-		SGPLogger.Info( $"Save Graph{(saveAs ? " As" : "")}" );
+		SGPLogger.Info( $"TODO : Save Graph{(saveAs ? " As" : "")}" );
 
 		return true;
 	}
 
 	void Quit()
 	{
-		SGPLogger.Info( $"Quit ShaderGraphPlus Editor" );
+		SGPLogger.Info( $"TODO : Quit ShaderGraphPlus Editor" );
 
 		_window.Dispose();
 	}
 
 	private void Undo()
 	{
-		SGPLogger.Info( $"Undo" );
+		SGPLogger.Info( $"TODO : Undo" );
 	}
 
 	private void Redo()
 	{
-		SGPLogger.Info( $"Redo" );
+		SGPLogger.Info( $"TODO : Redo" );
 	}
 
 	private void CutSelection()
 	{
-		SGPLogger.Info( $"Cut Selection" );
+		SGPLogger.Info( $"TODO : Cut Selection" );
 	}
 
 	private void CopySelection()
 	{
-		SGPLogger.Info( $"Copy Selection" );
+		SGPLogger.Info( $"TODO : Copy Selection" );
 	}
 
 	private void PasteSelection()
 	{
-		SGPLogger.Info( $"Paste Selection" );
+		SGPLogger.Info( $"TODO : Paste Selection" );
 	}
 
 	private void SelectAll()
 	{
-		SGPLogger.Info( $"Select All" );
+		SGPLogger.Info( $"TODO : Select All" );
 	}
 
 	private void Compile()
 	{
-		SGPLogger.Info( $"Compile Graph" );
+		SGPLogger.Info( $"TODO : Compile Graph" );
 	}
 
 	private string GeneratePreviewCode()

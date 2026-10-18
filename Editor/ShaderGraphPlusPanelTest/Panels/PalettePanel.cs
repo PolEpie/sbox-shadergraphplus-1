@@ -1,6 +1,5 @@
 using Editor;
 using Sandbox.UI;
-using Sandbox.UI.Construct;
 using ShaderGraphPlus;
 
 namespace ShaderGraphPlusPanelTest;
@@ -11,7 +10,7 @@ public sealed class PalettePanel : Panel
 
 	private TextInput _searchFilter;
 
-	private readonly Sandbox.UI.TreeView<Node> _tree;
+	private readonly Sandbox.UI.TreeView<PaletteTreeNode> _tree;
 
 	public PalettePanel( bool isSubgraph ) : base()
 	{
@@ -21,28 +20,34 @@ public sealed class PalettePanel : Panel
 
 		BuildToolbar();
 
-		_tree = new Sandbox.UI.TreeView<Node>();
+		_tree = new Sandbox.UI.TreeView<PaletteTreeNode>();
 		_tree.AddClass( "palette-tree" );
 		_tree.GetChildren = treeNode => treeNode.Children;
 		_tree.GetParent = treeNode => treeNode.Parent;
 		_tree.CanExpand = treeNode => treeNode.CanHaveChildren;
-		_tree.GetHeight = treeNode => treeNode is CategoryNode ? 30 : Theme.RowHeight;
+		_tree.GetHeight = treeNode => treeNode is PaletteCategoryNode ? 30 : Theme.RowHeight;
 		_tree.GetTooltip = treeNode => treeNode.ToolTip;
 		_tree.OnRow = OnRow;
 		_tree.OnSelect = treeNode => SGPLogger.Info( $"selected {treeNode.Name}" );
 		_tree.OnActivate = treeNode => SGPLogger.Info( $"activated {treeNode.Name}" );
 		_tree.OnRename = ( treeNode, text ) => { treeNode.Name = text; SGPLogger.Info( $"renamed to {text}" ); };
-		_tree.CanDrag = treeNode => treeNode is not CategoryNode;
+		_tree.CanDrag = treeNode => treeNode is not PaletteCategoryNode;
+		_tree.OnItemDropped = ( treeNode1, treeNode2 ) => SGPLogger.Info( $"dropped" );
 
 		AddChild( _tree );
 
 		UpdateTree();
 	}
 
-	private void OnRow( Sandbox.UI.TreeRow row, Node node )
+	private void OnRow( Sandbox.UI.TreeRow row, PaletteTreeNode node )
 	{
 		row.Text = node.Name;
 		row.IconName = node.Icon;
+		
+		if ( node is PaletteTypeNode typeNode )
+		{
+			row.UserData = typeNode.DisplayInfo;
+		}
 	}
 
 	private void BuildToolbar()
@@ -90,14 +95,14 @@ public sealed class PalettePanel : Panel
 
 	public void UpdateTree()
 	{
-		var roots = new List<Node>();
+		var roots = new List<PaletteTreeNode>();
 		foreach ( var category in GetItems() )
 		{
-			var categoryNode = new CategoryNode( category.Key ?? "Uncategorized" );
+			var categoryNode = new PaletteCategoryNode( category.Key ?? "Uncategorized" );
 
 			foreach ( var (type, info) in category.OrderBy( x => x.Info.Name ) )
 			{
-				categoryNode.AddItem( new Node( info.Name ) { Icon = info.Icon, Type = type } );
+				categoryNode.AddItem( new PaletteTypeNode( info ) );
 			}
 
 			roots.Add( categoryNode );
@@ -108,16 +113,16 @@ public sealed class PalettePanel : Panel
 	}
 }
 
-class CategoryNode : Node
+class PaletteCategoryNode : PaletteTreeNode
 {
 	public override bool CanHaveChildren => true;
 
-	public CategoryNode( string name ) : base( name )
+	public PaletteCategoryNode( string name ) : base( name )
 	{
-		Children = new List<Node>();
+		Children = new List<PaletteTreeNode>();
 	}
 
-	public void AddItem( Node item )
+	public void AddItem( PaletteTreeNode item )
 	{
 		if ( item is null )
 			return;
@@ -129,36 +134,53 @@ class CategoryNode : Node
 	}
 }
 
-class Node
+class PaletteTypeNode : PaletteTreeNode
+{
+	public DisplayInfo DisplayInfo { get; private set; }
+
+	public PaletteTypeNode( DisplayInfo info )
+	{
+		DisplayInfo = info;
+		Name = info.Name;
+		Icon = info.Icon;
+		ToolTip = info.Description;
+	}
+}
+
+abstract class PaletteTreeNode
 {
 	public string Name { get; set; }
 
-	public string Icon { get; set; }
+	public string Icon { get; init; }
 
-	public string ToolTip { get; set; }
+	public string ToolTip { get; init; }
 
-	/// <summary>
-	/// The shader node type a leaf row creates when dropped on the graph. Null for categories.
-	/// </summary>
-	public TypeDescription Type { get; init; }
+	public PaletteTreeNode Parent { get; set; }
 
-	public Node Parent { get; set; }
-
-	public Node( string name )
+	public PaletteTreeNode( string name, string icon = "", string tooltip = "")
 	{
 		Name = name;
+		Icon = icon;
+		ToolTip = tooltip;
+	}
+
+	public PaletteTreeNode()
+	{
+		Name = "";
+		Icon = "";
+		ToolTip = "";
 	}
 
 	public virtual bool CanHaveChildren => false;
 
-	private List<Node> _children;
-	public List<Node> Children
+	private List<PaletteTreeNode> _children;
+	public List<PaletteTreeNode> Children
 	{
 		get
 		{
 			if ( _children is not null ) return _children;
 
-			_children = new List<Node>();
+			_children = new List<PaletteTreeNode>();
 			if ( !CanHaveChildren ) return _children;
 
 			return _children;
@@ -169,7 +191,7 @@ class Node
 		}
 	}
 
-	public bool IsDescendantOf( Node other )
+	public bool IsDescendantOf( PaletteTreeNode other )
 	{
 		for ( var p = Parent; p is not null; p = p.Parent )
 		{

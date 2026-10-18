@@ -1,13 +1,18 @@
 ﻿
+using Editor;
+using Editor.NodeEditor;
+using Sandbox.Internal;
 using Sandbox.UI;
 using ShaderGraphPlus;
 using ShaderGraphPlusPanelTest;
+using SkiaSharp;
+using static Sandbox.Services.Inventory;
 
 namespace NodeEditorPlusTest;
 
 /// <summary>
 /// The node graph surface. Middle-drag pans, the wheel zooms around the cursor, and palette
-/// rows dropped here become <see cref="GraphNodeCard"/>s at the cursor.
+/// rows dropped here become <see cref="NodeCardUI"/>s at the cursor.
 /// </summary>
 public class GraphViewPanel : CanvasPanel
 {
@@ -32,12 +37,19 @@ public class GraphViewPanel : CanvasPanel
 	/// <summary>
 	/// The palette row being dragged over us, picked up from the bubbled ondragenter.
 	/// </summary>
-	private TreeRow _dragSource;
+	protected TreeRow _dragSource;
+
+	protected object _dragSource2;
 
 	/// <summary>
 	/// See-through card showing where the dragged palette node will land.
 	/// </summary>
-	private GraphNodeCard _dropPreview;
+	private NodeCardUI _dropPreview;
+
+	readonly List<NodeCardUI> _cards = new();
+
+	public bool HasDropped => _hasDropped;
+	private bool _hasDropped;
 
 	public GraphViewPanel() : base()
 	{
@@ -52,21 +64,13 @@ public class GraphViewPanel : CanvasPanel
 
 	public void ResetView() => SetView( new Vector2( -500, -300 ), new Vector2( 500, 300 ) );
 
-	/// <summary>
-	/// Place a node card with its top left at <paramref name="position"/>, snapped to the grid.
-	/// </summary>
-	public GraphNodeCard AddNode( TypeDescription type, Vector2 position )
-	{
-		return Content.AddChild( new GraphNodeCard( type, position.SnapToGrid( GridSize ) ) );
-	}
-
-	public GraphNodeCard CreateNewNode( INodeType type, Vector2 position )
+	public NodeCardUI CreateNewNode( INodeType type, Vector2 position )
 	{
 		return CreateNewNode( type, position.SnapToGrid( GridSize ), node =>
 			node.Position = position.SnapToGrid( GridSize ) );
 	}
 
-	public GraphNodeCard CreateNewNode( INodeType type, Vector2 position, Action<IGraphNode> onCreated = null )
+	public NodeCardUI CreateNewNode( INodeType type, Vector2 position, Action<IGraphNode> onCreated = null )
 	{
 		if ( type == null )
 			return null;
@@ -75,7 +79,12 @@ public class GraphViewPanel : CanvasPanel
 
 		var typeDescription = type.CreateNodeTest();
 
-		return AddNode( typeDescription, position );
+		var nodeCard = new NodeCardUI( typeDescription, position.SnapToGrid( GridSize ) );
+
+		Content.AddChild( nodeCard );
+		_cards.Add( nodeCard );
+
+		return nodeCard;
 	}
 
 	/// <summary>
@@ -86,76 +95,108 @@ public class GraphViewPanel : CanvasPanel
 		return position.SnapToGrid( GridSize );
 	}
 
-	/// <summary>
-	/// The shader node type behind a dragged palette row, or null for categories and anything else.
-	/// </summary>
-	private static TypeDescription PaletteType( Panel panel )
+	public override void Tick()
 	{
-		if ( panel is not TreeRow { RowIndex: >= 0, Tree: TreeView<Node> palette } row ) return null;
-		return palette.GetRowItem( row.RowIndex ).Type;
+		base.Tick();
+		_hasDropped = false;
+
+		if ( _dropPreview != null )
+		{
+			OnDragHover();
+		}
+	}
+
+	protected virtual INodeType NodeTypeFromPanelEvent( PanelEvent ev )
+	{
+		return null;
 	}
 
 	protected override void OnDragEnter( PanelEvent e )
 	{
 		base.OnDragEnter( e );
 
-		if ( e.Target is TreeRow row && PaletteType( row ) is not null )
-			_dragSource = row;
-	}
-
-	/// <summary>
-	/// A palette row was released over the graph: <paramref name="e"/>'s target is the dragged row.
-	/// </summary>
-	protected override void OnDrop( PanelEvent e )
-	{
-		// DropEvent is files/text from outside the app, not a panel drag
-		if ( e is DropEvent ) return;
-
-		var type = PaletteType( e.Target );
-		if ( type is null ) return;
-
-		ClearDropPreview();
-
-		AddNode( type, ScreenToCanvas( MousePosition ) );
-		e.StopPropagation();
-	}
-
-	public override void Tick()
-	{
-		base.Tick();
-		UpdateDropPreview();
-	}
-
-	/// <summary>
-	/// Keep the preview under the cursor, snapped like <see cref="AddNode"/> so the node lands exactly
-	/// where its preview was. Gone as soon as the drag ends or leaves the graph.
-	/// </summary>
-	private void UpdateDropPreview()
-	{
-		if ( _dragSource is not null && (!_dragSource.IsValid() || _dragSource.Tree is not { IsDragging: true }) )
-			_dragSource = null;
-
-		var type = _dragSource is not null && Viewport.IsInside( MousePosition ) ? PaletteType( _dragSource ) : null;
-		if ( type is null )
+		if ( e.Target is TreeRow row && row.UserData is DisplayInfo info )
 		{
-			ClearDropPreview();
+			var position = ScreenToCanvas( MousePosition ).SnapToGrid( GridSize );
+
+			_dropPreview = Content.AddChild( new NodeCardUI( EditorTypeLibrary.GetType( info.Fullname ), position, true ) );
+		}
+
+		SGPLogger.Info( "OnDragEnter()" );
+	}
+
+	protected virtual void OnDragHover()
+	{
+		if ( _hasDropped )
+		{
 			return;
 		}
 
 		var position = ScreenToCanvas( MousePosition ).SnapToGrid( GridSize );
-
-		if ( _dropPreview is null || _dropPreview.Type != type )
-		{
-			ClearDropPreview();
-			_dropPreview = Content.AddChild( new GraphNodeCard( type, position, isPreview: true ) );
-		}
-		else
-		{
-			_dropPreview.MoveTo( position );
-		}
+	
+		_dropPreview.MoveTo( position );
 	}
 
-	private void ClearDropPreview()
+	protected override void OnDragLeave( PanelEvent e )
+	{
+		base.OnDragLeave( e );
+
+		if ( _hasDropped )
+		{
+			return;
+		}
+
+		if ( _dropPreview != null )
+		{
+			ClearDropPreview();
+		}
+
+		SGPLogger.Info( "OnDragLeave()" );
+	}
+
+	protected override void OnDrop( PanelEvent e )
+	{
+		base.OnDrop( e );
+
+		if ( _hasDropped )
+		{
+			return;
+		}
+
+		Focus();
+
+		_hasDropped = true;
+
+		if ( _dropPreview != null )
+		{
+
+			ClearDropPreview();
+		}
+		
+		if ( NodeTypeFromPanelEvent( e ) is not { } type )
+		{
+			return;
+		}
+		
+		var position = ScreenToCanvas( MousePosition ).SnapToGrid( GridSize );
+		CreateNewNode( type, position );
+
+		e.StopPropagation();
+
+		OnDragDropFinish();
+
+		SGPLogger.Info( "OnDrop()" );
+	}
+
+	/// <summary>
+	/// Called when <see cref="OnDrop( PanelEvent )"/> finishes.
+	/// </summary>
+	protected virtual void OnDragDropFinish()
+	{
+
+	}
+
+	protected void ClearDropPreview()
 	{
 		_dropPreview?.Delete( true );
 		_dropPreview = null;
@@ -186,17 +227,33 @@ public class GraphViewPanel : CanvasPanel
 
 		if ( step < major )
 		{
-			DrawLines( painter, min, max, step, major, MinorColor );
+			DrawGridLines( painter, min, max, step, major, MinorColor );
 		}
 
-		DrawLines( painter, min, max, major, 0, MajorColor );
-	}
+		DrawGridLines( painter, min, max, major, 0, MajorColor );
 
+		var lineWidth = 4.0f;
+		var lineWidthScale = 1.0f;
+
+		painter.Stroke = Stroke.Solid( Theme.Blue, lineWidth * lineWidthScale );
+
+		for ( int i = 0; i < _cards.Count - 1; i++ )
+		{
+			var nodeCardA = _cards[i];
+			var nodeCardB = _cards[i + 1];
+			
+			painter.Line( CanvasToScreen( Position( nodeCardA ) + new Vector2( nodeCardA.Box.Rect.Width, nodeCardA.Box.Rect.Height / 2 ) / ScaleToScreen ),
+				CanvasToScreen( Position( nodeCardB ) + new Vector2( 0, nodeCardB.Box.Rect.Height / 2 ) / ScaleToScreen ) );
+		}
+	}
+	
+	Vector2 Position( Panel panel ) => (panel.Box.Rect.Position - Content.Box.Rect.Position) / ScaleToScreen;
+	
 	/// <summary>
 	/// Vertical and horizontal lines every <paramref name="step"/> units, skipping multiples of
 	/// <paramref name="skipEvery"/> so minor lines never overlap the major ones and double their alpha.
 	/// </summary>
-	private void DrawLines( Painter painter, Vector2 min, Vector2 max, float step, float skipEvery, Color color )
+	private void DrawGridLines( Painter painter, Vector2 min, Vector2 max, float step, float skipEvery, Color color )
 	{
 		painter.Stroke = Stroke.Solid( color, 1 );
 
@@ -215,6 +272,67 @@ public class GraphViewPanel : CanvasPanel
 
 			painter.Line( CanvasToScreen( new Vector2( min.x, y ) ), CanvasToScreen( new Vector2( max.x, y ) ) );
 		}
+	}
+
+	public void RebuildFromGraph()
+	{
+		OnClear();
+
+		DeleteAllNodeCards();
+
+		BuildFromNodes( false );
+		
+		OnRebuild();
+	}
+
+	public void BuildFromNodes( bool insert, Vector2 offset = default, bool selectNew = false )
+	{
+		if ( !insert )
+		{
+			var removed = _cards
+				.OfType<NodeCardUI>()
+				.ToArray();
+		
+			foreach ( var cardUi in removed )
+			{
+				cardUi.Delete();
+			}
+		}
+
+		//UpdateConnections( nodesSet, selectNew );
+		UpdateConnections();
+	}
+
+	//	public void UpdateConnections( IEnumerable<IGraphNode> nodes, bool selectNew = false )
+	public void UpdateConnections()
+	{
+		SGPLogger.Info( $"TODO : GraphViewPanel.UpdateConnections()" );
+	}
+
+	private void DeleteAllNodeCards()
+	{
+		NodeCardUI[] array = _cards.ToArray();
+		for ( int i = 0; i < array.Length; i++ )
+		{
+			array[i].Delete();
+		}
+
+		_cards.Clear();
+	}
+
+	protected virtual void OnClear()
+	{
+
+	}
+
+	protected virtual void OnRebuild()
+	{
+
+	}
+
+	private bool IsHoveringOverView()
+	{
+		return Viewport.IsInside( MousePosition );
 	}
 
 	private static bool IsMultiple( float value, float of )

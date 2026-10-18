@@ -7,7 +7,7 @@ namespace NodeEditorPlusTest;
 /// A shader node placed on the graph canvas. Lives in <see cref="CanvasPanel.Content"/>, so it pans
 /// and zooms with the grid. Drag the header to move it; it follows the cursor freely and snaps to the grid on release.
 /// </summary>
-public sealed class GraphNodeCard : Panel
+public sealed class NodeCardUI : Panel
 {
 	/// <summary>
 	/// The <see cref="ShaderGraphPlus.ShaderNodePlus"/> type this card stands for.
@@ -21,11 +21,16 @@ public sealed class GraphNodeCard : Panel
 
 	private readonly Header _header;
 
+	public NodeCardUI()
+	{
+
+	}
+
 	/// <summary>
 	/// A see-through stand-in shown while a palette row is dragged over the graph. It ignores the
 	/// mouse so it never becomes the drop target or starts a card drag.
 	/// </summary>
-	public GraphNodeCard( TypeDescription type, Vector2 position, bool isPreview = false )
+	public NodeCardUI( TypeDescription type, Vector2 position, bool isPreview = false )
 	{
 		Type = type;
 		AddClass( "sg-node" );
@@ -55,7 +60,7 @@ public sealed class GraphNodeCard : Panel
 	}
 
 	/// <summary>
-	/// Put the card's top left at <paramref name="position"/>, in canvas coordinates. No snapping.
+	/// Put the card's top left at <paramref name="position"/>, in canvas coordinates.
 	/// </summary>
 	public void MoveTo( Vector2 position )
 	{
@@ -71,9 +76,9 @@ public sealed class GraphNodeCard : Panel
 	/// </summary>
 	private sealed class Header : CanvasPanel.Handle
 	{
-		private readonly GraphNodeCard _card;
+		private readonly NodeCardUI _card;
 
-		public Header( GraphNodeCard card )
+		public Header( NodeCardUI card )
 		{
 			_card = card;
 			Positioned = false;
