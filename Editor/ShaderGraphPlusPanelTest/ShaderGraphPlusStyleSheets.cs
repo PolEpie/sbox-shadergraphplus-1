@@ -20,13 +20,6 @@ public static class ShaderGraphPlusStyleSheets
 
 		.sg-graph { background-color: #1b1d22; }
 
-		.sg-node { position: absolute; flex-direction: column; min-width: 160px; min-height: 48px; background-color: #25282f; border: 1px solid #3a3e47; border-radius: 6px; }
-		.sg-node > .header { flex-direction: row; align-items: center; gap: 6px; height: 28px; padding: 0px 10px; background-color: #323743; border-radius: 6px 6px 0px 0px; cursor: move; }
-		.sg-node > .header > * { pointer-events: none; }
-		.sg-node > .header > .icon { font-size: 15px; color: #8a8f98; }
-		.sg-node > .header > .title { font-size: 12px; font-weight: 600; white-space: nowrap; }
-		.sg-node.preview { opacity: 0.45; border-color: #4b8bf5; }
-
 		.console > .body { flex-direction: row; flex-grow: 1; min-height: 0; }
 		.console > .body > .list { min-width: 0; }
 		.console > .body > .detail-splitter { width: 5px; flex-shrink: 0; cursor: ew-resize; background-color: #1a1c21; }

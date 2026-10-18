@@ -1,37 +1,27 @@
-﻿
 using Editor;
 using Sandbox.UI;
+using Sandbox.UI.NodeGraph;
 using ShaderGraphPlus;
 using ShaderGraphPlusPanelTest;
 
 namespace NodeEditorPlusTest;
 
 /// <summary>
-/// The node graph surface. Middle-drag pans, the wheel zooms around the cursor, and palette
-/// rows dropped here become <see cref="NodeCardUI"/>s at the cursor.
+/// The engine <see cref="NodeGraphPanel"/> plus palette drag and drop: rows dropped here become
+/// nodes at the cursor, with a see-through preview while dragging.
 /// </summary>
-public class GraphViewPanel : CanvasPanel
+public class GraphViewPanel : NodeGraphPanel
 {
-	/// <summary>
-	/// Spacing of the minor grid lines, in canvas units. Nodes snap to it.
-	/// </summary>
-	public float GridSize { get; set; } = 16f;
-
-	private static readonly Color MinorColor = Color.White.WithAlpha( 0.04f );
-	private static readonly Color MajorColor = Color.White.WithAlpha( 0.09f );
-
 	/// <summary>
 	/// See-through card showing where the dragged palette node will land.
 	/// </summary>
-	private NodeCardUI _dropPreview;
+	private NodePanel _dropPreview;
 
 	/// <summary>
 	/// Palette drag enter/leave count. Events bubble up from cards in any order, so the drag only
 	/// left the view when this is 0 in <see cref="Tick"/>.
 	/// </summary>
 	private int _dragDepth;
-
-	readonly List<NodeCardUI> _cards = new();
 
 	public bool HasDropped => _hasDropped;
 	private bool _hasDropped;
@@ -40,36 +30,22 @@ public class GraphViewPanel : CanvasPanel
 	{
 		AddClass( ShaderGraphPlusCssClasses.EditorDockPane );
 		AddClass( "sg-graph" );
-
-		MinimumViewSpan = 100;
-		MaximumViewSpan = 20000;
-
-		ResetView();
 	}
 
-	public void ResetView() => SetView( new Vector2( -500, -300 ), new Vector2( 500, 300 ) );
-
-	public NodeCardUI CreateNewNode( INodeType type, Vector2 position )
+	/// <summary>
+	/// Create a node of <paramref name="type"/> at <paramref name="position"/> and add it to the graph.
+	/// </summary>
+	public NodePanel CreateNewNode( INodeType type, Vector2 position )
 	{
-		return CreateNewNode( type, position.SnapToGrid( GridSize ), node =>
-			node.Position = position.SnapToGrid( GridSize ) );
-	}
-
-	public NodeCardUI CreateNewNode( INodeType type, Vector2 position, Action<IGraphNode> onCreated = null )
-	{
-		if ( type == null )
+		if ( type is null || Graph is null )
 			return null;
 
-		SGPLogger.Info( $"TODO : GraphViewPanel.CreateNewNode()" );
+		if ( type.CreateNode( Graph as INodeGraph ) is not INode node )
+			return null;
 
-		var typeDescription = type.CreateNodeTest();
+		node.Position = position;
 
-		var nodeCard = new NodeCardUI( this, typeDescription, position.SnapToGrid( GridSize ) );
-
-		Content.AddChild( nodeCard );
-		_cards.Add( nodeCard );
-
-		return nodeCard;
+		return AddNode( node );
 	}
 
 	public override void Tick()
@@ -97,20 +73,22 @@ public class GraphViewPanel : CanvasPanel
 	{
 		base.OnDragEnter( e );
 
-		if ( e.Target is TreeRow row && row.UserData is DisplayInfo info )
+		if ( e.Target is TreeRow { UserData: DisplayInfo } )
 		{
 			_dragDepth++;
 
 			// Also fires over placed cards, so keep the existing preview
-			if ( _dropPreview == null )
+			if ( _dropPreview == null && Graph is INodeGraph graph && NodeTypeFromPanelEvent( e ) is { } type )
 			{
-				var position = ScreenToCanvas( MousePosition ).SnapToGrid( GridSize );
+				// A throwaway node of the dragged type, never added to the graph
+				if ( type.CreateNode( graph ) is INode node )
+				{
+					node.Position = ScreenToCanvas( MousePosition ).SnapToGrid( GridSize );
 
-				_dropPreview = Content.AddChild( new NodeCardUI( this, EditorTypeLibrary.GetType( info.Fullname ), position, true ) );
+					_dropPreview = CreatePreview( node );
+				}
 			}
 		}
-
-		SGPLogger.Info( "OnDragEnter()" );
 	}
 
 	protected virtual void OnDragHover()
@@ -120,9 +98,7 @@ public class GraphViewPanel : CanvasPanel
 			return;
 		}
 
-		var position = ScreenToCanvas( MousePosition ).SnapToGrid( GridSize );
-
-		_dropPreview.MoveTo( position );
+		_dropPreview.MoveTo( ScreenToCanvas( MousePosition ).SnapToGrid( GridSize ) );
 	}
 
 	protected override void OnDragLeave( PanelEvent e )
@@ -138,8 +114,6 @@ public class GraphViewPanel : CanvasPanel
 		{
 			_dragDepth = Math.Max( 0, _dragDepth - 1 );
 		}
-
-		SGPLogger.Info( "OnDragLeave()" );
 	}
 
 	protected override void OnDrop( PanelEvent e )
@@ -157,7 +131,6 @@ public class GraphViewPanel : CanvasPanel
 
 		if ( _dropPreview != null )
 		{
-
 			ClearDropPreview();
 		}
 
@@ -166,14 +139,11 @@ public class GraphViewPanel : CanvasPanel
 			return;
 		}
 
-		var position = ScreenToCanvas( MousePosition ).SnapToGrid( GridSize );
-		CreateNewNode( type, position );
+		CreateNewNode( type, ScreenToCanvas( MousePosition ) );
 
 		e.StopPropagation();
 
 		OnDragDropFinish();
-
-		SGPLogger.Info( "OnDrop()" );
 	}
 
 	/// <summary>
@@ -189,148 +159,5 @@ public class GraphViewPanel : CanvasPanel
 		_dropPreview?.Delete( true );
 		_dropPreview = null;
 		_dragDepth = 0;
-	}
-
-	public override void OnDraw( Painter painter )
-	{
-		var viewport = Viewport;
-
-		if ( viewport.Width <= 0 || viewport.Height <= 0 )
-			return;
-
-		using var scope = painter.Scope();
-		painter.Clip( viewport );
-
-		var min = ScreenToCanvas( viewport.Position );
-		var max = ScreenToCanvas( viewport.Position + viewport.Size );
-		var pixelsPerUnit = viewport.Width / (max.x - min.x);
-
-		var step = GridSize;
-
-		// Minor lines closer than this on screen are merged, so zooming out never draws thousands of lines.
-		var minLineSpacingPixels = GridSize / 2;
-
-		while ( step * pixelsPerUnit < minLineSpacingPixels )
-		{
-			step *= 2;
-		}
-
-		var majorEvery = GridSize / 2;
-		var major = Math.Max( step, GridSize * majorEvery );
-
-		if ( step < major )
-		{
-			DrawGridLines( painter, min, max, step, major, MinorColor );
-		}
-
-		DrawGridLines( painter, min, max, major, 0, MajorColor );
-
-		var lineWidth = 4.0f;
-		var lineWidthScale = 1.0f;
-
-		painter.Stroke = Stroke.Solid( Theme.Blue, lineWidth * lineWidthScale );
-
-		for ( int i = 0; i < _cards.Count - 1; i++ )
-		{
-			var nodeCardA = _cards[i];
-			var nodeCardB = _cards[i + 1];
-
-			painter.Line( CanvasToScreen( Position( nodeCardA ) + new Vector2( nodeCardA.Box.Rect.Width, nodeCardA.Box.Rect.Height / 2 ) / ScaleToScreen ),
-				CanvasToScreen( Position( nodeCardB ) + new Vector2( 0, nodeCardB.Box.Rect.Height / 2 ) / ScaleToScreen ) );
-		}
-	}
-
-	/// <summary>
-	/// Vertical and horizontal lines every <paramref name="step"/> units, skipping multiples of
-	/// <paramref name="skipEvery"/> so minor lines never overlap the major ones and double their alpha.
-	/// </summary>
-	private void DrawGridLines( Painter painter, Vector2 min, Vector2 max, float step, float skipEvery, Color color )
-	{
-		painter.Stroke = Stroke.Solid( color, 1 );
-
-		for ( var x = MathF.Ceiling( min.x / step ) * step; x <= max.x; x += step )
-		{
-			if ( skipEvery > 0 && IsMultiple( x, skipEvery ) )
-				continue;
-
-			painter.Line( CanvasToScreen( new Vector2( x, min.y ) ), CanvasToScreen( new Vector2( x, max.y ) ) );
-		}
-
-		for ( var y = MathF.Ceiling( min.y / step ) * step; y <= max.y; y += step )
-		{
-			if ( skipEvery > 0 && IsMultiple( y, skipEvery ) )
-				continue;
-
-			painter.Line( CanvasToScreen( new Vector2( min.x, y ) ), CanvasToScreen( new Vector2( max.x, y ) ) );
-		}
-	}
-
-	public void RebuildFromGraph()
-	{
-		OnClear();
-
-		DeleteAllNodeCards();
-
-		BuildFromNodes( false );
-
-		OnRebuild();
-	}
-
-	public void BuildFromNodes( bool insert, Vector2 offset = default, bool selectNew = false )
-	{
-		if ( !insert )
-		{
-			var removed = _cards
-				.OfType<NodeCardUI>()
-				.ToArray();
-
-			foreach ( var cardUi in removed )
-			{
-				cardUi.Delete();
-			}
-		}
-
-		//UpdateConnections( nodesSet, selectNew );
-		UpdateConnections();
-	}
-
-	//	public void UpdateConnections( IEnumerable<IGraphNode> nodes, bool selectNew = false )
-	public void UpdateConnections()
-	{
-		SGPLogger.Info( $"TODO : GraphViewPanel.UpdateConnections()" );
-	}
-
-	private void DeleteAllNodeCards()
-	{
-		NodeCardUI[] array = _cards.ToArray();
-		for ( int i = 0; i < array.Length; i++ )
-		{
-			array[i].Delete();
-		}
-
-		_cards.Clear();
-	}
-
-	protected virtual void OnClear()
-	{
-
-	}
-
-	protected virtual void OnRebuild()
-	{
-
-	}
-
-	Vector2 Position( Panel panel ) => (panel.Box.Rect.Position - Content.Box.Rect.Position) / ScaleToScreen;
-
-	private bool IsHoveringOverView()
-	{
-		return Viewport.IsInside( MousePosition );
-	}
-
-	private static bool IsMultiple( float value, float of )
-	{
-		var r = MathF.Abs( value % of );
-		return r < 0.001f || of - r < 0.001f;
 	}
 }

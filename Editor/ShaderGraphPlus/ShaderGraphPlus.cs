@@ -102,7 +102,7 @@ public class PreviewSettings
 
 [JsonConverter( typeof( ShaderGraphPlusConverter ) )]
 [AssetType( Name = ShaderGraphPlusGlobals.AssetTypeName, Extension = ShaderGraphPlusGlobals.AssetTypeExtension, Flags = AssetTypeFlags.NoEmbedding ), Icon( "account_tree" )]
-public partial class ShaderGraphPlus : IBlackboardNodeGraph
+public partial class ShaderGraphPlus : IBlackboardNodeGraph, Sandbox.UI.NodeGraph.IGraph
 {
 	[Hide]
 	public int Version => 12;
@@ -115,6 +115,9 @@ public partial class ShaderGraphPlus : IBlackboardNodeGraph
 
 	[Hide, JsonIgnore]
 	IEnumerable<IGraphNode> INodeGraph.Nodes => Nodes;
+
+	[Hide, JsonIgnore]
+	IEnumerable<Sandbox.UI.NodeGraph.INode> Sandbox.UI.NodeGraph.IGraph.Nodes => Nodes;
 
 	[Hide, JsonIgnore]
 	public IEnumerable<BlackboardParameter> Parameters => _parameters.Values;
@@ -659,6 +662,16 @@ public partial class ShaderGraphPlus : IBlackboardNodeGraph
 	}
 
 	void INodeGraph.RemoveNode( IGraphNode node )
+	{
+		RemoveNode( (BaseNodePlus)node );
+	}
+
+	void Sandbox.UI.NodeGraph.IGraph.AddNode( Sandbox.UI.NodeGraph.INode node )
+	{
+		AddNode( (BaseNodePlus)node );
+	}
+
+	void Sandbox.UI.NodeGraph.IGraph.RemoveNode( Sandbox.UI.NodeGraph.INode node )
 	{
 		RemoveNode( (BaseNodePlus)node );
 	}

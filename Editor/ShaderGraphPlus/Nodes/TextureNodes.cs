@@ -35,19 +35,19 @@ public abstract class Texture2DSamplerBase : PreviewableNode, IErroringNode
 		ExpandSize = new Vector2( 0, 8 + Inputs.Count() * 24 );
 	}
 
-	public override void OnPaint( Rect rect )
+	public override void OnPaint<T>( T paint, Rect rect )
 	{
 		rect = rect.Align( 130, TextFlag.LeftBottom ).Shrink( 3 );
 
-		Paint.SetBrush( "/image/transparent-small.png" );
-		Paint.DrawRect( rect.Shrink( 2 ), 2 );
+		paint.SetBrush( Texture.Load( "/image/transparent-small.png" ) );
+		paint.DrawRect( rect.Shrink( 2 ), 2 );
 
-		Paint.SetBrush( Theme.ControlBackground.WithAlpha( 0.7f ) );
-		Paint.DrawRect( rect, 2 );
+		paint.SetBrush( Theme.ControlBackground.WithAlpha( 0.7f ) );
+		paint.DrawRect( rect, 2 );
 
 		if ( _asset != null )
 		{
-			Paint.Draw( rect.Shrink( 2 ), _asset.GetAssetThumb( true ) );
+			paint.Draw( rect.Shrink( 2 ), Texture.Load( $"thumb:{_asset.RelativePath}" ) );
 		}
 	}
 
@@ -747,22 +747,21 @@ public sealed class SampleTextureCubeNode : ShaderNodePlus
 		ExpandSize = new Vector2( 0, 8 + Inputs.Count() * 24 );
 	}
 
-	public override void OnPaint( Rect rect )
+	public override void OnPaint<T>( T paint, Rect rect )
 	{
 		rect = rect.Align( 130, TextFlag.LeftBottom ).Shrink( 3 );
 
-		Paint.SetBrush( "/image/transparent-small.png" );
-		Paint.DrawRect( rect.Shrink( 2 ), 2 );
+		paint.SetBrush( Sandbox.Texture.Load( "/image/transparent-small.png" ) );
+		paint.DrawRect( rect.Shrink( 2 ), 2 );
 
-		Paint.SetBrush( Theme.ControlBackground.WithAlpha( 0.7f ) );
-		Paint.DrawRect( rect, 2 );
+		paint.SetBrush( Theme.ControlBackground.WithAlpha( 0.7f ) );
+		paint.DrawRect( rect, 2 );
 
 		if ( !string.IsNullOrEmpty( Texture ) )
 		{
 			var tex = Sandbox.Texture.Find( Texture );
 			if ( tex is null ) return;
-			var pixmap = Pixmap.FromTexture( tex );
-			Paint.Draw( rect.Shrink( 2 ), pixmap );
+			paint.Draw( rect.Shrink( 2 ), tex );
 		}
 	}
 

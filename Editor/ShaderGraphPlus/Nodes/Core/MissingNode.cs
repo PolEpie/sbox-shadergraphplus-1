@@ -43,10 +43,10 @@ public class MissingNode : BaseNodePlus
 		Content = json.ToString();
 	}
 
-	public override void OnPaint( Rect rect )
+	public override void OnPaint<T>( T paint, Rect rect )
 	{
-		Paint.SetDefaultFont();
-		Paint.DrawText( rect.Shrink( 8, 22, 8, 8 ), Content, TextFlag.LeftTop );
+		paint.SetDefaultFont();
+		paint.DrawText( rect.Shrink( 8, 22, 8, 8 ), Content, TextFlag.LeftTop );
 	}
 
 	[JsonIgnore, Hide, Browsable( false )]

@@ -1,4 +1,4 @@
-﻿using Editor.NodeEditor;
+using Editor.NodeEditor;
 using NodeEditorPlusTest;
 using Sandbox.Internal;
 using Sandbox.UI;
@@ -15,6 +15,22 @@ public sealed class ShaderGraphPlusViewPanel : GraphViewPanel
 	public ShaderGraphPlusViewPanel() : base()
 	{
 		SGPLogger.Info( $"TODO : ShaderGraphPlusViewPanel Constructor" );
+	}
+
+	/// <summary>
+	/// Nodes refresh their plugs in OnFrame, which the Qt view calls every frame too.
+	/// </summary>
+	public override void Tick()
+	{
+		base.Tick();
+
+		foreach ( var node in Nodes )
+		{
+			if ( node.Node is BaseNodePlus baseNode )
+			{
+				baseNode.OnFrame();
+			}
+		}
 	}
 
 	public void AddNodeType<T>() where T : BaseNodePlus
@@ -54,6 +70,20 @@ public sealed class ShaderGraphPlusViewPanel : GraphViewPanel
 		var parameterType = ClassBlackboardParameterType.HookupParameterType( type );
 
 		AvailableParameters.TryAdd( parameterType.Identifier, parameterType );
+	}
+
+	protected override Sandbox.UI.NodeGraph.NodeHandleConfig OnGetHandleConfig( Type type )
+	{
+		if ( ShaderGraphPlusTheme.NodeHandleConfigs.TryGetValue( type, out var config ) )
+		{
+			var shape = Enum.TryParse<Sandbox.UI.NodeGraph.HandleShape>( config.Shape.ToString(), out var mapped )
+				? mapped
+				: Sandbox.UI.NodeGraph.HandleShape.Square;
+
+			return new Sandbox.UI.NodeGraph.NodeHandleConfig( config.Name, config.Color, shape );
+		}
+
+		return base.OnGetHandleConfig( type );
 	}
 
 	protected override INodeType NodeTypeFromPanelEvent( PanelEvent ev )
