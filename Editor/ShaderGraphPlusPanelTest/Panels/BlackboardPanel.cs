@@ -148,6 +148,8 @@ public sealed class BlackboardPanel : Panel
 
 		var parameters = _graph?.Parameters.Where( MatchesFilter ).ToArray() ?? [];
 
+		_list.SetClass( "is-empty", parameters.Length == 0 );
+
 		if ( parameters.Length == 0 )
 		{
 			_list.Add.Label( _graph is null ? "No graph open" : !string.IsNullOrEmpty( _filter ) ? "No matching parameters" : "No parameters yet - add one with +", "empty" );
@@ -183,10 +185,11 @@ internal sealed class ParameterRow : Panel
 
 		Style.BorderLeftColor = config.Color;
 
-		var type = Add.Label( config.Name, "type" );
-		type.Style.FontColor = config.Color;
+		// A label's text sits at the top of its box, so the chip is a centering box around it
+		var type = Add.Panel( "type" );
 		type.Style.BackgroundColor = config.Color.WithAlpha( 0.12f );
 		type.Style.BorderColor = config.Color.WithAlpha( 0.45f );
+		type.Add.Label( config.Name, "type-text" ).Style.FontColor = config.Color;
 
 		Add.Label( parameter.Name, "name" );
 

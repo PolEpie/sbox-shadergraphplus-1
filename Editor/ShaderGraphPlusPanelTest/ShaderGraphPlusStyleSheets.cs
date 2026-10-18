@@ -41,10 +41,12 @@ public static class ShaderGraphPlusStyleSheets
 
 		.sg-blackboard { flex-direction: column; }
 		.sg-params { flex-direction: column; flex-grow: 1; flex-shrink: 1; min-height: 0; overflow: scroll; padding: 4px; gap: 2px; }
-		.sg-params > .empty { padding: 12px; color: #6e737c; font-size: 11px; }
+		.sg-params.is-empty { align-items: center; justify-content: center; }
+		.sg-params > .empty { padding: 12px; color: #6e737c; font-size: 11px; text-align: center; }
 		.sg-param { flex-direction: row; align-items: center; flex-shrink: 0; gap: 8px; min-height: 28px; padding: 0px 8px; border-left-width: 3px; border-radius: 4px; background-color: #23262c; }
 		.sg-param:hover { background-color: #2a2e36; }
-		.sg-param > .type { flex-shrink: 0; padding: 1px 6px; border-width: 1px; border-radius: 3px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+		.sg-param > .type { flex-direction: row; align-items: center; justify-content: center; flex-shrink: 0; height: 18px; padding: 0px 6px; border-width: 1px; border-radius: 3px; }
+		.sg-param > .type > .type-text { font-size: 11px; font-weight: 600; white-space: nowrap; }
 		.sg-param > .name { flex-grow: 1; flex-shrink: 1; min-width: 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 		.sg-param > .tags { flex-direction: row; flex-shrink: 0; gap: 4px; }
 		.sg-param > .tags > .tag { padding: 0px 5px; border-radius: 3px; background-color: #31353e; color: #9aa0aa; font-size: 10px; white-space: nowrap; }
