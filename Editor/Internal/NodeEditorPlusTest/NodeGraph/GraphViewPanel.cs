@@ -42,6 +42,13 @@ public class GraphViewPanel : CanvasPanel
 	/// </summary>
 	private NodeCardUI _dropPreview;
 
+	/// <summary>
+	/// Set by <see cref="OnDragLeave"/>, resolved in <see cref="Tick"/>. Drag enter/leave bubble up from
+	/// descendant cards, and children process their events before us, so crossing a card yields
+	/// enter/leave pairs in either order. Only a leave that no enter cancelled in the same frame is real.
+	/// </summary>
+	private bool _dragLeavePending;
+
 	readonly List<NodeCardUI> _cards = new();
 
 	public bool HasDropped => _hasDropped;
@@ -96,6 +103,11 @@ public class GraphViewPanel : CanvasPanel
 		base.Tick();
 		_hasDropped = false;
 
+		if ( _dragLeavePending )
+		{
+			ClearDropPreview();
+		}
+
 		if ( _dropPreview != null )
 		{
 			OnDragHover();
@@ -113,9 +125,15 @@ public class GraphViewPanel : CanvasPanel
 
 		if ( e.Target is TreeRow row && row.UserData is DisplayInfo info )
 		{
-			var position = ScreenToCanvas( MousePosition ).SnapToGrid( GridSize );
+			_dragLeavePending = false;
 
-			_dropPreview = Content.AddChild( new NodeCardUI( EditorTypeLibrary.GetType( info.Fullname ), position, true ) );
+			// Also fires when the cursor moves onto a placed card (bubbled), so reuse the existing preview.
+			if ( _dropPreview == null )
+			{
+				var position = ScreenToCanvas( MousePosition ).SnapToGrid( GridSize );
+
+				_dropPreview = Content.AddChild( new NodeCardUI( EditorTypeLibrary.GetType( info.Fullname ), position, true ) );
+			}
 		}
 
 		SGPLogger.Info( "OnDragEnter()" );
@@ -144,7 +162,7 @@ public class GraphViewPanel : CanvasPanel
 
 		if ( _dropPreview != null )
 		{
-			ClearDropPreview();
+			_dragLeavePending = true;
 		}
 
 		SGPLogger.Info( "OnDragLeave()" );
@@ -196,6 +214,7 @@ public class GraphViewPanel : CanvasPanel
 	{
 		_dropPreview?.Delete( true );
 		_dropPreview = null;
+		_dragLeavePending = false;
 	}
 
 	public override void OnDraw( Painter painter )
