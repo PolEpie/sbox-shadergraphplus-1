@@ -10,6 +10,7 @@ namespace ShaderGraphPlusPanelTest;
 public sealed class ShaderGraphPlusViewPanel : GraphViewPanel
 {
 	private readonly Dictionary<string, INodeType> AvailableNodes = new( StringComparer.OrdinalIgnoreCase );
+	private readonly Dictionary<string, IBlackboardParameterType> AvailableParameters = new( StringComparer.OrdinalIgnoreCase );
 
 	public ShaderGraphPlusViewPanel() : base()
 	{
@@ -41,6 +42,18 @@ public sealed class ShaderGraphPlusViewPanel : GraphViewPanel
 	public INodeType FindNodeType( Type type )
 	{
 		return AvailableNodes.TryGetValue( type.FullName!, out var nodeType ) ? nodeType : null;
+	}
+
+	public void AddParameterType<T>() where T : BlackboardParameter
+	{
+		AddParameterType( EditorTypeLibrary.GetType<T>() );
+	}
+
+	public void AddParameterType( TypeDescription type )
+	{
+		var parameterType = ClassBlackboardParameterType.HookupParameterType( type );
+
+		AvailableParameters.TryAdd( parameterType.Identifier, parameterType );
 	}
 
 	protected override INodeType NodeTypeFromPanelEvent( PanelEvent ev )

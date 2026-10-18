@@ -37,7 +37,7 @@ public sealed class PropertiesPanel : Panel
 	/// <summary>
 	/// A property of the target was edited.
 	/// </summary>
-	public Action OnChanged { get; set; }
+	public Action<SerializedProperty> PropertyUpdated { get; set; }
 
 	public PropertiesPanel() : base()
 	{
@@ -96,10 +96,10 @@ public sealed class PropertiesPanel : Panel
 		var serialized = EditorTypeLibrary.GetSerializedObject( _target );
 
 		// Also fires for edits inside nested structs
-		serialized.OnPropertyChanged += _ =>
+		serialized.OnPropertyChanged += property =>
 		{
 			if ( _title is not null && _target is BlackboardParameter p ) _title.Text = p.Name;
-			OnChanged?.Invoke();
+			PropertyUpdated?.Invoke( property );
 		};
 
 		var properties = serialized.Where( x => !x.IsMethod ).ToList();

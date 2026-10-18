@@ -147,20 +147,34 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		ConsolePanel.Hook();
 
 		_graphView = new ShaderGraphPlusViewPanel();
-		_properties = new PropertiesPanel { Target = _graph };
+	
 		_palette = new PalettePanel( IsSubgraph );
-		_blackboard = new BlackboardPanel( IsSubgraph ) { Graph = _graph };
-		// Nothing selected shows the graph, like the Qt editor
-		_blackboard.OnSelected = parameter => _properties.Target = (object)parameter ?? _graph;
-		_properties.OnChanged = _blackboard.Rebuild;
+		
+		_blackboard = new BlackboardPanel( IsSubgraph );
+		_blackboard.Graph = _graph;
+		_blackboard.OnDirty += ( evaluate ) => SetDirty( evaluate );
+		//_blackboard.OnSelected = parameter => _properties.Target = (object)parameter ?? _graph;
+		
+		_properties = new PropertiesPanel();
+		_properties.Target = _graph;
+		_properties.PropertyUpdated += OnPropertyUpdated;
 		_preview = new PreviewPanel();
 
 		var nodeTypes = EditorTypeLibrary.GetTypes<ShaderNodePlus>()
 			.Where( x => !x.IsAbstract && !x.HasAttribute<HideAttribute>() ).OrderBy( x => x.Name );
 
+		var blackboardParameterTypes = EditorTypeLibrary.GetTypes<BlackboardParameter>()
+			.Where( x => !x.IsAbstract ).OrderBy( x => x.Name );
+
 		foreach ( var type in nodeTypes )
 		{
 			_graphView.AddNodeType( type );
+		}
+
+		foreach ( var type in blackboardParameterTypes )
+		{
+			_graphView.AddParameterType( type );
+			_blackboard.AddParameterType( type );
 		}
 
 		var subgraphs = AssetSystem.All.Where( x => x.Path.EndsWith( $".{ShaderGraphPlusGlobals.SubgraphAssetTypeExtension}", StringComparison.OrdinalIgnoreCase ) );
@@ -194,6 +208,27 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		_savedLayout = _defaultLayout;
 	}
 
+	private void OnPropertyUpdated( SerializedProperty serializedProperty )
+	{
+		// TODO
+		/*
+		_preview.PostProcessing = _graph.Domain == ShaderDomain.PostProcess;
+
+		if ( _properties.Target is BaseNodePlus node )
+		{
+			_graphView.UpdateNode( node );
+		}
+
+		// Reload shader template
+		if ( _properties.Target is ShaderGraphPlus && serializedProperty.IsPropertyName( nameof( ShaderGraphPlus.ShaderType ) ) )
+		{
+			LoadShaderTypeInfo();
+		}
+		*/
+
+		var shouldEvaluate = _properties.Target is not CommentNode;
+		SetDirty( shouldEvaluate );
+	}
 	private void PromptSave( Action action )
 	{
 		if ( !_dirty )

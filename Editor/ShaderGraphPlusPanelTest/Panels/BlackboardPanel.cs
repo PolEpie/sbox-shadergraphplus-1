@@ -12,12 +12,13 @@ namespace ShaderGraphPlusPanelTest;
 /// </summary>
 public sealed class BlackboardPanel : Panel
 {
-	private readonly bool _isSubgraph;
-	private readonly Dictionary<string, IBlackboardParameterType> _parameterTypes = new();
-
 	private TextInput _searchFilter;
 	private string _filter = "";
 	private readonly Panel _list;
+
+	private readonly bool _isSubgraph;
+
+	private readonly Dictionary<string, IBlackboardParameterType> _availableParameters = new( StringComparer.OrdinalIgnoreCase );
 
 	/// <summary>
 	/// The currently selected parameter.
@@ -29,14 +30,20 @@ public sealed class BlackboardPanel : Panel
 	/// </summary>
 	public Action<BlackboardParameter> OnSelected { get; set; }
 
+	public Action<bool> OnDirty { get; set; }
+
 	public ShaderGraphPlus.ShaderGraphPlus Graph
 	{
 		get => field;
 		set
 		{
+			if ( field == value ) return;
+
 			field = value;
+
 			Select( null );
-			Rebuild();
+
+			RebuildFromGraph();
 		}
 	}
 
@@ -47,12 +54,6 @@ public sealed class BlackboardPanel : Panel
 		AddClass( ShaderGraphPlusCssClasses.EditorDockPane );
 		AddClass( "sg-blackboard" );
 
-		foreach ( var type in EditorTypeLibrary.GetTypes<BlackboardParameter>().Where( x => !x.IsAbstract ) )
-		{
-			var parameterType = ClassBlackboardParameterType.HookupParameterType( type );
-			_parameterTypes.TryAdd( parameterType.Identifier, parameterType );
-		}
-
 		BuildToolbar();
 
 		_list = Add.Panel( "sg-params" );
@@ -62,8 +63,75 @@ public sealed class BlackboardPanel : Panel
 		{
 			if ( e.Target == _list ) Select( null );
 		} );
+	}
 
-		Rebuild();
+	public void AddParameterType<T>() where T : BlackboardParameter
+	{
+		AddParameterType( EditorTypeLibrary.GetType<T>() );
+	}
+
+	public void AddParameterType( TypeDescription type )
+	{
+		var parameterType = ClassBlackboardParameterType.HookupParameterType( type );
+
+		_availableParameters.TryAdd( parameterType.Identifier, parameterType );
+	}
+
+	private void CreateNewParameter( IBlackboardParameterType type, string group = "" )
+	{
+		//group = NormalizeGroup( group );
+
+		_searchFilter.SetValue( "" );
+		_filter = "";
+		//ExpandGroup( group );
+
+		//using var undoScope = UndoScope( "Add Parameter" );
+
+		var parameter = (BlackboardParameter)type.CreateParameter( Graph );
+
+		//if ( parameter is IGroupableBlackboardParameter groupable )
+		//{
+		//	SetGroupData( group, group, groupable );
+		//}
+
+		Graph.AddParameter( parameter );
+
+		//RebuildParameterOrder();
+
+		OnDirty?.Invoke( true );
+
+		//_window.OnParameterSelected( parameter );
+
+		RebuildFromGraph( true );
+	}
+
+	public IBlackboardParameter CreateNewParameter( IBlackboardParameterType type, string name = "", Action onCreated = null )
+	{
+		if ( type == null )
+			return null;
+
+		//var group = NormalizeGroup( "" );
+
+		_filter = "";
+		//ExpandGroup( group );
+
+		var parameter = type.CreateParameter( Graph, name );
+
+		if ( parameter == null )
+			return null;
+
+		//if ( parameter is IGroupableBlackboardParameter groupable )
+		//{
+		//	SetGroupData( group, group, groupable );
+		//}
+
+		onCreated?.Invoke();
+
+		Graph.AddParameter( parameter );
+
+		//RebuildParameterOrder();
+
+		return parameter;
 	}
 
 	private void BuildToolbar()
@@ -75,7 +143,7 @@ public sealed class BlackboardPanel : Panel
 		_searchFilter.OnChange = value =>
 		{
 			_filter = value?.Trim() ?? "";
-			Rebuild();
+			BuildFromParameters( Graph.Parameters );
 		};
 
 		var addMenu = new Sandbox.UI.Menu();
@@ -85,70 +153,74 @@ public sealed class BlackboardPanel : Panel
 
 	private void BuildAddMenu( Sandbox.UI.Menu menu )
 	{
+		void AddOption( Sandbox.UI.Menu menu, IBlackboardParameterType parameterType, string icon, string description )
+		{
+			var option = menu.AddOption( parameterType.Type.Title, !string.IsNullOrWhiteSpace( icon ) ? icon : null, () =>
+			{
+				CreateNewParameter( parameterType, "" );//, group );
+			} );
+
+			option.Tooltip = description;
+		}
+
 		menu.Clear();
 
 		if ( Graph is null )
 			return;
 
-		var types = BlackboardParameter.GetRelevantParameters( _parameterTypes, _isSubgraph )
-			.OfType<ClassBlackboardParameterType>()
-			.OrderBy( x => x.Type.Order )
-			.ToArray();
+		IBlackboardParameterType[] avalibleTypes = BlackboardParameter.GetRelevantParameters( _availableParameters, Graph.IsSubgraph ).ToArray();
 
 		if ( !_isSubgraph )
 		{
-			var parameters = menu.AddMenu( "Parameter", "edit_attributes" );
-			var attributes = menu.AddMenu( "Attribute", "edit_attributes" );
-			var combos = menu.AddMenu( "Combo", "alt_route" );
+			var materialParametersMenu = menu.AddMenu( "Parameter", "edit_attributes" );
+			var attributesMenu = menu.AddMenu( "Attribute", "edit_attributes" );
+			var materialCombosMenu = menu.AddMenu( "Combo", "alt_route" );
 
-			foreach ( var type in types )
+			foreach ( var parameterType in avalibleTypes.OfType<ClassBlackboardParameterType>().OrderBy( x => x.Type.Order ) )
 			{
-				var target = type.Type.TargetType;
-				var submenu = target.IsAssignableTo( typeof( IBlackboardShaderFeatureParameter ) ) ? combos
-					: target == typeof( SamplerStateParameter ) ? attributes
-					: parameters;
+				var targetType = parameterType.Type.TargetType;
+				var icon = parameterType.DisplayInfo.Icon;
+				var description = parameterType.DisplayInfo.Description;
 
-				AddTypeOption( submenu, type );
+				if ( targetType.IsAssignableTo( typeof( IBlackboardMaterialParameter ) ) || targetType.IsAssignableTo( typeof( BlackboardTextureMaterialParameter ) ) )
+				{
+					menu = materialParametersMenu;
+				}
+				else if ( targetType.IsAssignableTo( typeof( IBlackboardShaderFeatureParameter ) ) )
+				{
+					menu = materialCombosMenu;
+				}
+				else if ( targetType == typeof( SamplerStateParameter ) )
+				{
+					menu = attributesMenu;
+				}
+
+				AddOption( menu, parameterType, icon, description );
 			}
 		}
 		else
 		{
-			var inputs = menu.AddMenu( "Input", "input" );
-			var outputs = menu.AddMenu( "Output", "output" );
+			var subgraphInputsMenu = menu.AddMenu( "Input", "input" );
+			var subgraphOutputsMenu = menu.AddMenu( "Output", "output" );
 
-			foreach ( var type in types )
+			foreach ( var parameterType in avalibleTypes.OfType<ClassBlackboardParameterType>().OrderBy( x => x.Type.Order ) )
 			{
-				AddTypeOption( type.Type.TargetType.IsAssignableTo( typeof( IBlackboardSubgraphOutputParameter ) ) ? outputs : inputs, type );
+				var targetType = parameterType.Type.TargetType;
+				var icon = parameterType.DisplayInfo.Icon;
+				var description = parameterType.DisplayInfo.Description;
+
+				if ( targetType.IsAssignableTo( typeof( IBlackboardSubgraphInputParameter ) ) )
+				{
+					menu = subgraphInputsMenu;
+				}
+				else if ( targetType.IsAssignableTo( typeof( IBlackboardSubgraphOutputParameter ) ) )
+				{
+					menu = subgraphOutputsMenu;
+				}
+
+				AddOption( menu, parameterType, icon, description );
 			}
 		}
-	}
-
-	private void AddTypeOption( Sandbox.UI.Menu menu, ClassBlackboardParameterType type )
-	{
-		var option = menu.AddOption( type.Type.Title, type.DisplayInfo.Icon, () => CreateParameter( type ) );
-		option.Tooltip = type.DisplayInfo.Description;
-	}
-
-	private void CreateParameter( IBlackboardParameterType type )
-	{
-		var parameter = (BlackboardParameter)type.CreateParameter( Graph );
-
-		// Default group, like the Qt blackboard
-		var groupName = parameter.GetGroupTitle();
-		if ( Graph.TryFindGroupData( groupName, out var group ) )
-		{
-			group.ParameterReferences.Add( parameter.Identifier );
-		}
-		else
-		{
-			Graph.AddGroupData( new GroupData( [parameter.Identifier] ) { Name = groupName }, 0 );
-		}
-
-		Graph.AddParameter( parameter );
-
-		_searchFilter.SetValue( "" );
-		_filter = "";
-		Rebuild();
 	}
 
 	/// <summary>
@@ -180,7 +252,7 @@ public sealed class BlackboardPanel : Panel
 					Graph.RemoveGroupData( group );
 			}
 
-			Rebuild();
+			BuildFromParameters( Graph.Parameters );
 		}
 
 		if ( nodes.Length == 0 )
@@ -199,33 +271,29 @@ public sealed class BlackboardPanel : Panel
 	/// <summary>
 	/// Make <paramref name="parameter"/> the selected one, or clear the selection with null.
 	/// </summary>
-	public void Select( BlackboardParameter parameter )
+	public void Select( IBlackboardParameter parameter )
 	{
 		if ( Selected == parameter )
 			return;
 
-		Selected = parameter;
+		Selected = (BlackboardParameter)parameter;
 
 		foreach ( var row in _list.Children.OfType<ParameterRow>() )
 		{
 			row.SetSelected( row.Parameter == parameter );
 		}
 
-		OnSelected?.Invoke( parameter );
+		OnSelected?.Invoke( (BlackboardParameter)parameter );
 	}
 
 	/// <summary>
 	/// Recreate the rows from the graph, applying the filter.
 	/// </summary>
-	public void Rebuild()
+	public void BuildFromParameters( IEnumerable<IBlackboardParameter> parameters, bool preserveSelection = false )
 	{
 		_list.DeleteChildren( true );
 
-		var parameters = Graph?.Parameters.Where( MatchesFilter ).ToArray() ?? [];
-
-		_list.SetClass( "is-empty", parameters.Length == 0 );
-
-		if ( parameters.Length == 0 )
+		if ( parameters.Count() == 0 )
 		{
 			_list.Add.Label( Graph is null ? "No graph open" : !string.IsNullOrEmpty( _filter ) ? "No matching parameters" : "No parameters yet - add one with +", "empty" );
 			return;
@@ -233,8 +301,20 @@ public sealed class BlackboardPanel : Panel
 
 		foreach ( var parameter in parameters )
 		{
-			var row = _list.AddChild( new ParameterRow( this, parameter ) );
+			var row = _list.AddChild( new ParameterRow( this, (BlackboardParameter)parameter) );
 			row.SetSelected( parameter == Selected );
+		}
+	}
+
+	public void RebuildFromGraph( bool preserveSelection = false )
+	{
+		if ( Graph is not null )
+		{
+			var parameters = Graph?.Parameters.Where( MatchesFilter ).ToArray() ?? [];
+
+			_list.SetClass( "is-empty", parameters.Length == 0 );
+
+			BuildFromParameters( parameters, preserveSelection );
 		}
 	}
 
@@ -253,16 +333,15 @@ public sealed class BlackboardPanel : Panel
 /// </summary>
 internal sealed class ParameterRow : Panel
 {
-	private readonly BlackboardPanel _owner;
-	private readonly BlackboardParameter _parameter;
 	private Sandbox.UI.Menu _menu;
+	private readonly BlackboardPanel _blackboard;
 
-	internal BlackboardParameter Parameter => _parameter;
+	internal BlackboardParameter Parameter { get; private set; }
 
-	public ParameterRow( BlackboardPanel owner, BlackboardParameter parameter )
+	public ParameterRow( BlackboardPanel blackboard, BlackboardParameter parameter )
 	{
-		_owner = owner;
-		_parameter = parameter;
+		_blackboard = blackboard;
+		Parameter = parameter;
 
 		AddClass( "sg-param" );
 
@@ -298,29 +377,29 @@ internal sealed class ParameterRow : Panel
 		tip.AddClass( "sg-tip" );
 
 		var head = tip.Add.Panel( "head" );
-		AddTypeChip( head, TypeConfig( _parameter ) );
-		head.Add.Label( _parameter.Name, "name" );
+		AddTypeChip( head, TypeConfig( Parameter ) );
+		head.Add.Label( Parameter.Name, "name" );
 
-		if ( !string.IsNullOrWhiteSpace( _parameter.DisplayInfo.Description ) )
-			tip.Add.Label( _parameter.DisplayInfo.Description, "description" );
+		if ( !string.IsNullOrWhiteSpace( Parameter.DisplayInfo.Description ) )
+			tip.Add.Label( Parameter.DisplayInfo.Description, "description" );
 
-		if ( TextureOf( _parameter ) is { DefaultTexture: { Length: > 0 } path } )
+		if ( TextureOf( Parameter ) is { DefaultTexture: { Length: > 0 } path } )
 		{
 			tip.Add.Panel( "preview" ).Style.BackgroundImage = Texture.Load( $"thumb:{path}" );
 			Detail( tip, "Texture" ).Add.Label( path, "text" );
 		}
-		else if ( _parameter is not IBlackboardSubgraphOutputParameter )
+		else if ( Parameter is not IBlackboardSubgraphOutputParameter )
 		{
-			AddValue( Detail( tip, "Default" ), _parameter );
+			AddValue( Detail( tip, "Default" ), Parameter );
 		}
 
-		if ( _parameter is IRangedBlackboardMaterialParameter ranged )
+		if ( Parameter is IRangedBlackboardMaterialParameter ranged )
 			Detail( tip, "Range" ).Add.Label( $"{Format( ranged.GetRangeMin() )} – {Format( ranged.GetRangeMax() )}", "text" );
 
-		Detail( tip, "Group" ).Add.Label( _parameter.GetGroupTitle(), "text" );
+		Detail( tip, "Group" ).Add.Label( Parameter.GetGroupTitle(), "text" );
 
 		// The range has its own line above
-		var tags = Tags( _parameter ).Where( x => !x.Contains( '–' ) ).ToList();
+		var tags = Tags( Parameter ).Where( x => !x.Contains( '–' ) ).ToList();
 		if ( tags.Count > 0 )
 		{
 			var row = tip.Add.Panel( "tags" );
@@ -347,18 +426,18 @@ internal sealed class ParameterRow : Panel
 		base.OnMouseDown( e );
 
 		if ( e.Button == "mouseleft" )
-			_owner.Select( _parameter );
+			_blackboard.Select( Parameter );
 	}
 
 	protected override void OnRightClick( MousePanelEvent e )
 	{
 		e.StopPropagation();
-		_owner.Select( _parameter );
+		_blackboard.Select( Parameter );
 		_menu?.Delete( true );
 
 		var menu = new Sandbox.UI.Menu();
 		_menu = menu;
-		menu.AddOption( "Delete", "delete", () => _owner.Remove( _parameter ) );
+		menu.AddOption( "Delete", "delete", () => _blackboard.Remove( (BlackboardParameter)Parameter) );
 		menu.Closed += _ => { if ( _menu == menu ) _menu = null; menu.Delete( true ); };
 		menu.Open( this, Popup.PositionMode.UnderMouse );
 	}
@@ -366,7 +445,7 @@ internal sealed class ParameterRow : Panel
 	/// <summary>
 	/// The label and color of a parameter's type.
 	/// </summary>
-	internal static BlackboardConfig TypeConfig( BlackboardParameter parameter )
+	internal static BlackboardConfig TypeConfig( IBlackboardParameter parameter )
 	{
 		return ShaderGraphPlusTheme.BlackboardConfigs.TryGetValue( parameter.GetType(), out var config )
 			? config
@@ -383,7 +462,7 @@ internal sealed class ParameterRow : Panel
 		chip.Add.Label( config.Name, "text" ).Style.FontColor = config.Color;
 	}
 
-	private static void AddValue( Panel parent, BlackboardParameter parameter )
+	private static void AddValue( Panel parent, IBlackboardParameter parameter )
 	{
 		var value = parent.Add.Panel( "value" );
 
@@ -449,7 +528,7 @@ internal sealed class ParameterRow : Panel
 		AddSwatch( value, texture.DefaultColor );
 	}
 
-	private static TextureInput? TextureOf( BlackboardParameter parameter ) => parameter switch
+	private static TextureInput? TextureOf( IBlackboardParameter parameter ) => parameter switch
 	{
 		BlackboardTextureMaterialParameter t => t.Value,
 		IBlackboardSubgraphInputParameter when parameter.GetValue() is TextureInput t => t,
@@ -459,7 +538,7 @@ internal sealed class ParameterRow : Panel
 	/// <summary>
 	/// Short labels for the settings that change how the parameter compiles or shows up.
 	/// </summary>
-	private static IEnumerable<string> Tags( BlackboardParameter parameter )
+	private static IEnumerable<string> Tags( IBlackboardParameter parameter )
 	{
 		if ( parameter is IBlackboardMaterialParameter { IsAttribute: true } )
 			yield return "Attribute";
