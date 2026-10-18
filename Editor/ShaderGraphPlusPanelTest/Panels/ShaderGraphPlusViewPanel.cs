@@ -51,7 +51,7 @@ public sealed class ShaderGraphPlusViewPanel : GraphViewPanel
 				? type
 				: null;
 		}
-			
+
 		return null;
 	}
 }

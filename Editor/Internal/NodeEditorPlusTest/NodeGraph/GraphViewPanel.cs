@@ -128,7 +128,7 @@ public class GraphViewPanel : CanvasPanel
 		}
 
 		var position = ScreenToCanvas( MousePosition ).SnapToGrid( GridSize );
-	
+
 		_dropPreview.MoveTo( position );
 	}
 
@@ -167,12 +167,12 @@ public class GraphViewPanel : CanvasPanel
 
 			ClearDropPreview();
 		}
-		
+
 		if ( NodeTypeFromPanelEvent( e ) is not { } type )
 		{
 			return;
 		}
-		
+
 		var position = ScreenToCanvas( MousePosition ).SnapToGrid( GridSize );
 		CreateNewNode( type, position );
 
@@ -238,7 +238,7 @@ public class GraphViewPanel : CanvasPanel
 		{
 			var nodeCardA = _cards[i];
 			var nodeCardB = _cards[i + 1];
-			
+
 			painter.Line( CanvasToScreen( Position( nodeCardA ) + new Vector2( nodeCardA.Box.Rect.Width, nodeCardA.Box.Rect.Height / 2 ) / ScaleToScreen ),
 				CanvasToScreen( Position( nodeCardB ) + new Vector2( 0, nodeCardB.Box.Rect.Height / 2 ) / ScaleToScreen ) );
 		}
@@ -276,7 +276,7 @@ public class GraphViewPanel : CanvasPanel
 		DeleteAllNodeCards();
 
 		BuildFromNodes( false );
-		
+
 		OnRebuild();
 	}
 
@@ -287,7 +287,7 @@ public class GraphViewPanel : CanvasPanel
 			var removed = _cards
 				.OfType<NodeCardUI>()
 				.ToArray();
-		
+
 			foreach ( var cardUi in removed )
 			{
 				cardUi.Delete();

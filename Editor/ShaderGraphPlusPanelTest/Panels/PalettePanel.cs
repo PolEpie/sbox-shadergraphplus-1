@@ -59,7 +59,7 @@ public sealed class PalettePanel : Panel
 	{
 		row.Text = node.Name;
 		row.IconName = node.Icon;
-		
+
 		if ( node is PaletteTypeNode typeNode )
 		{
 			row.UserData = typeNode.DisplayInfo;
@@ -173,7 +173,7 @@ abstract class PaletteTreeNode
 
 	public PaletteTreeNode Parent { get; set; }
 
-	public PaletteTreeNode( string name, string icon = "", string tooltip = "")
+	public PaletteTreeNode( string name, string icon = "", string tooltip = "" )
 	{
 		Name = name;
 		Icon = icon;

@@ -91,7 +91,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		var edit = menus.AddMenu( "Edit" );
 
 		Option( edit, "Undo", "undo", "Ctrl+Z", Undo );
-		Option( edit, "Redo", "redo","Ctrl+Y", Redo );
+		Option( edit, "Redo", "redo", "Ctrl+Y", Redo );
 
 		edit.AddSeparator();
 
