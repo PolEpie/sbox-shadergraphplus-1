@@ -23,9 +23,17 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	[Menu( "Editor", "Shader Graph Plus/NewEditorTest", "schema" )]
 	public static void OpenNewEditorTest()
 	{
-		_window?.Dispose();
-		_window = new PanelWindow( "Shader Graph Plus", new Vector2( 1700, 1050 ), null, true ) { MinSize = new Vector2( 800, 480 ) };
-		_window.Root.AddChild( new ShaderGraphPlusPanelTest() );
+		// Look the open editor up rather than keeping a static: statics don't survive hotload, the window does.
+		foreach ( var existing in PanelWindow.All.Where( x => x.Root?.Children.OfType<ShaderGraphPlusPanelTest>().Any() == true ).ToArray() )
+		{
+			existing.Dispose();
+		}
+
+#pragma warning disable CA2000 // Dispose objects before losing scope
+		// The window owns itself until closed; Quit or the next open disposes it
+		var window = new PanelWindow( "Shader Graph Plus", new Vector2( 1700, 1050 ), null, true ) { MinSize = new Vector2( 800, 480 ) };
+#pragma warning restore CA2000 // Dispose objects before losing scope
+		window.Root.AddChild( new ShaderGraphPlusPanelTest() );
 	}
 
 	public ShaderGraphPlusPanelTest() : base()
@@ -109,7 +117,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		view.AddSeparator();
 
-		Option( view, "Full Screen", "F11", "", () => { _window.ToggleMaximized(); UpdateMaximizeIcon(); } );
+		Option( view, "Full Screen", "F11", "", () => { Window?.ToggleMaximized(); UpdateMaximizeIcon(); } );
 
 		bar.Add.Panel( "grow" );
 
@@ -117,10 +125,10 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		var titleWrap = bar.Add.Panel( "titlewrap" );
 		WindowTitle = titleWrap.Add.Label( "", "title" );
 
-		WindowButton( bar, "remove", null, _window.Minimize );
+		WindowButton( bar, "remove", null, () => Window?.Minimize() );
 		_maximizeIcon = WindowButton( bar, "crop_square", null, () =>
 		{
-			_window.ToggleMaximized();
+			Window?.ToggleMaximized();
 			UpdateMaximizeIcon();
 		} );
 		WindowButton( bar, "close", "close", Quit );
@@ -262,7 +270,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	{
 		SGPLogger.Info( $"TODO : Quit ShaderGraphPlus Editor" );
 
-		_window.Dispose();
+		Window?.Dispose();
 	}
 
 	private void Undo()
