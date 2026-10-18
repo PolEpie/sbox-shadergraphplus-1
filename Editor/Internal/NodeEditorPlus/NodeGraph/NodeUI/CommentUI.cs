@@ -12,6 +12,12 @@ public interface ICommentNode : IGraphNode
 	string Title { get; set; }
 	string Description { get; set; }
 	int DescriptionFontSize { get; set; }
+
+	/// <summary>
+	/// Identifiers of the nodes this comment holds. The panel editor moves them with it and fits
+	/// the comment around them.
+	/// </summary>
+	List<string> Members { get; set; }
 }
 
 public class CommentUI : NodeUI

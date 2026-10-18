@@ -12,6 +12,8 @@ public sealed class ShaderGraphPlusViewPanel : GraphViewPanel
 	private readonly Dictionary<string, INodeType> AvailableNodes = new( StringComparer.OrdinalIgnoreCase );
 	private readonly Dictionary<string, IBlackboardParameterType> AvailableParameters = new( StringComparer.OrdinalIgnoreCase );
 
+	protected override INodeType CommentNodeType { get; } = new ClassNodeType( EditorTypeLibrary.GetType<CommentNode>() );
+
 	public ShaderGraphPlusViewPanel() : base()
 	{
 		SGPLogger.Info( $"TODO : ShaderGraphPlusViewPanel Constructor" );
