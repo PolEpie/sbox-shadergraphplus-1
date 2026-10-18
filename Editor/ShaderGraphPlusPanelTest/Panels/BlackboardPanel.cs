@@ -59,6 +59,8 @@ public sealed class BlackboardPanel : Panel
 	{
 		_isSubgraph = isSubgraph;
 
+		_collapsedGroups = EditorCookie.Get<List<string>>( CollapsedGroupsCookie, [] ).ToHashSet( StringComparer.OrdinalIgnoreCase );
+
 		AddClass( ShaderGraphPlusCssClasses.EditorDockPane );
 		AddClass( "sg-blackboard" );
 
