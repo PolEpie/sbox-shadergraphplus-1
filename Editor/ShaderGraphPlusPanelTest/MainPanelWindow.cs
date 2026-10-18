@@ -20,6 +20,8 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	private BlackboardPanel _blackboard;
 	private PreviewPanel _preview;
 
+	private ShaderGraphPlus.ShaderGraphPlus _graph;
+
 	[Menu( "Editor", "Shader Graph Plus/NewEditorTest", "schema" )]
 	public static void OpenNewEditorTest()
 	{
@@ -147,7 +149,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		_graphView = new ShaderGraphPlusViewPanel();
 		_properties = new PropertiesPanel();
 		_palette = new PalettePanel( IsSubgraph );
-		_blackboard = new BlackboardPanel();
+		_blackboard = new BlackboardPanel( IsSubgraph ) { Graph = _graph };
 		_preview = new PreviewPanel();
 
 		var nodeTypes = EditorTypeLibrary.GetTypes<ShaderNodePlus>()
@@ -217,6 +219,9 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	public void CreateNew()
 	{
 		SGPLogger.Info( $"TODO : New Graph" );
+
+		_graph = new ShaderGraphPlus.ShaderGraphPlus { IsSubgraph = IsSubgraph };
+		_blackboard.Graph = _graph;
 
 		_graphView.RebuildFromGraph();
 

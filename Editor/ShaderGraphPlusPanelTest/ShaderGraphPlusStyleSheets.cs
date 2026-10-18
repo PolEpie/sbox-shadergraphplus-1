@@ -39,6 +39,20 @@ public static class ShaderGraphPlusStyleSheets
 
 		.palette-tree { flex-grow: 1; flex-shrink: 1; min-height: 0; }
 
+		.sg-blackboard { flex-direction: column; }
+		.sg-params { flex-direction: column; flex-grow: 1; flex-shrink: 1; min-height: 0; overflow: scroll; padding: 4px; gap: 2px; }
+		.sg-params > .empty { padding: 12px; color: #6e737c; font-size: 11px; }
+		.sg-param { flex-direction: row; align-items: center; flex-shrink: 0; gap: 8px; min-height: 28px; padding: 0px 8px; border-left-width: 3px; border-radius: 4px; background-color: #23262c; }
+		.sg-param:hover { background-color: #2a2e36; }
+		.sg-param > .type { flex-shrink: 0; padding: 1px 6px; border-width: 1px; border-radius: 3px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+		.sg-param > .name { flex-grow: 1; flex-shrink: 1; min-width: 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+		.sg-param > .tags { flex-direction: row; flex-shrink: 0; gap: 4px; }
+		.sg-param > .tags > .tag { padding: 0px 5px; border-radius: 3px; background-color: #31353e; color: #9aa0aa; font-size: 10px; white-space: nowrap; }
+		.sg-param > .value { flex-direction: row; align-items: center; flex-shrink: 1; min-width: 0; gap: 5px; }
+		.sg-param > .value > .text { color: #c4c8cf; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+		.sg-param > .value > .swatch { flex-shrink: 0; width: 12px; height: 12px; border-radius: 2px; border: 1px solid #00000080; }
+		.sg-param > .value > .icon { font-size: 13px; color: #8a8f98; }
+
 		.sg-list { flex-direction: column; flex-grow: 1; padding: 4px 0px; }
 		.sg-list .category { padding: 8px 10px 4px 10px; color: #8a8f98; font-size: 11px; font-weight: 600; text-transform: uppercase; }
 		.sg-list .item { height: 26px; align-items: center; gap: 8px; padding: 0px 14px; }
