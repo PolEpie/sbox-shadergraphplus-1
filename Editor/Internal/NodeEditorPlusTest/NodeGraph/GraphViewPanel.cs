@@ -52,7 +52,7 @@ public class GraphViewPanel : NodeGraphPanel
 	/// <summary>
 	/// Creates comments, or null when this graph has none.
 	/// </summary>
-	protected virtual INodeType CommentNodeType => null;
+	protected virtual INodeType CommentNodeType { get; }
 
 	protected virtual INodeType RerouteNodeType { get; }
 
