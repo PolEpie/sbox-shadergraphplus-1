@@ -7,7 +7,7 @@ using System.Globalization;
 namespace ShaderGraphPlusPanelTest;
 
 /// <summary>
-/// The graph's parameters as a list, one row each: type in its type color, name, default value,
+/// The graph's parameters in a list, one row each: type in its type color, name, default value,
 /// and tags for the settings worth seeing at a glance (sRGB, attribute, range...).
 /// </summary>
 public sealed class BlackboardPanel : Panel
@@ -20,18 +20,15 @@ public sealed class BlackboardPanel : Panel
 	private readonly Panel _list;
 
 	/// <summary>
-	/// The parameter picked in the list, or null.
+	/// The currently selected parameter.
 	/// </summary>
 	public BlackboardParameter Selected { get; private set; }
 
 	/// <summary>
-	/// The selection changed - to null when it's cleared.
+	/// Called when a parmeter is selected.
 	/// </summary>
 	public Action<BlackboardParameter> OnSelected { get; set; }
 
-	/// <summary>
-	/// The graph whose parameters are listed. Setting it rebuilds the list.
-	/// </summary>
 	public ShaderGraphPlus.ShaderGraphPlus Graph
 	{
 		get => field;
@@ -341,7 +338,7 @@ internal sealed class ParameterRow : Panel
 	}
 
 	/// <summary>
-	/// Highlight in the type's color, like the Qt blackboard's selected pill.
+	/// Highlight the row in the type's color.
 	/// </summary>
 	internal void SetSelected( bool selected ) => SetClass( "selected", selected );
 
@@ -367,7 +364,7 @@ internal sealed class ParameterRow : Panel
 	}
 
 	/// <summary>
-	/// The label and color the Qt blackboard uses for this parameter's type.
+	/// The label and color of a parameter's type.
 	/// </summary>
 	internal static BlackboardConfig TypeConfig( BlackboardParameter parameter )
 	{
@@ -376,10 +373,6 @@ internal sealed class ParameterRow : Panel
 			: new BlackboardConfig( parameter.DisplayInfo.Name, ShaderGraphPlusTheme.DefaultTypeColor );
 	}
 
-	/// <summary>
-	/// The type label with its type-colored dot, as the Qt blackboard paints them. Shared with the
-	/// properties heading so a selection reads the same in both places.
-	/// </summary>
 	internal static void AddTypeChip( Panel parent, BlackboardConfig config )
 	{
 		// Box that centers the label vertically
