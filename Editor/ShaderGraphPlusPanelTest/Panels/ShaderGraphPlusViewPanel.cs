@@ -43,13 +43,6 @@ public sealed class ShaderGraphPlusViewPanel : GraphViewPanel
 		return AvailableNodes.TryGetValue( type.FullName!, out var nodeType ) ? nodeType : null;
 	}
 
-	//protected override TypeDescription GetPalleteType( Panel panel )
-	//{
-	//	if ( panel is not TreeRow { RowIndex: >= 0, Tree: TreeView<Node> palette } row ) return null;
-	//
-	//	return palette.GetRowItem( row.RowIndex ).Type;
-	//}
-
 	protected override INodeType NodeTypeFromPanelEvent( PanelEvent ev )
 	{
 		if ( ev.Target is TreeRow row && row.UserData is DisplayInfo info )
