@@ -47,7 +47,7 @@ public abstract class Texture2DSamplerBase : PreviewableNode, IErroringNode
 
 		if ( _asset != null )
 		{
-			paint.Draw( rect.Shrink( 2 ), Texture.Load( $"thumb:{_asset.RelativePath}" ) );
+			paint.Draw( rect.Shrink( 2 ), Texture.Load( $"{_asset.RelativePath}" ) );
 		}
 	}
 
