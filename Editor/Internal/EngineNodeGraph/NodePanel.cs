@@ -54,7 +54,7 @@ public partial class NodePanel : CanvasPanel.Handle
 	/// <summary>
 	/// Node size in node units, from <see cref="Layout"/>.
 	/// </summary>
-	public Vector2 Size { get; private set; }
+	public Vector2 Size { get; protected set; }
 
 	protected virtual float TitleHeight => Node.HasTitleBar ? 24f + (Node.HasSubtitle ? 24f : 0f) : 0f;
 
@@ -433,9 +433,7 @@ public partial class NodePanel : CanvasPanel.Handle
 		var hasError = !string.IsNullOrWhiteSpace( Node.ErrorMessage );
 		var body = BodyColor;
 
-		// Depth, then the selection glow
-		paint.DrawShadow( rect, radius, Color.Black.WithAlpha( 0.5f ), 18f, new Vector2( 0f, 6f ) );
-
+		// Selection or error glow; no depth shadow
 		if ( Selected )
 		{
 			paint.DrawShadow( rect, radius, NodeTheme.Accent.WithAlpha( 0.45f ), 10f, default, 1f );

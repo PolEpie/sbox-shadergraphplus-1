@@ -72,6 +72,16 @@ public partial class NodeGraphPanel : CanvasPanel
 	public float Zoom => (CanvasToScreen( Vector2.One ) - CanvasToScreen( Vector2.Zero )).x / ScaleToScreen;
 
 	/// <summary>
+	/// The furthest the wheel zooms out, as a <see cref="Zoom"/>.
+	/// </summary>
+	public float MinZoom { get; set; } = 0.1f;
+
+	/// <summary>
+	/// The furthest the wheel zooms in, as a <see cref="Zoom"/>.
+	/// </summary>
+	public float MaxZoom { get; set; } = 5f;
+
+	/// <summary>
 	/// Centre the view on <paramref name="center"/> at <paramref name="zoom"/>.
 	/// </summary>
 	public void SetView( Vector2 center, float zoom )
@@ -268,12 +278,16 @@ public partial class NodeGraphPanel : CanvasPanel
 	{
 		foreach ( var node in _nodes )
 		{
-			var rect = new Rect( node.Position, node.Size );
-			node.Selected = _boxBase.Contains( node ) || rect.Overlaps( box );
+			node.Selected = _boxBase.Contains( node ) || BoxSelects( node, box );
 		}
 
 		SelectionChanged?.Invoke();
 	}
+
+	/// <summary>
+	/// Whether a box selection over <paramref name="box"/> takes <paramref name="node"/>. Any overlap does by default.
+	/// </summary>
+	protected virtual bool BoxSelects( NodePanel node, Rect box ) => new Rect( node.Position, node.Size ).Overlaps( box );
 
 	public override void OnButtonTyped( ButtonEvent e )
 	{
@@ -292,7 +306,13 @@ public partial class NodeGraphPanel : CanvasPanel
 		var delta = value.y != 0 ? value.y : value.x;
 		if ( delta == 0 || !CanNavigate || IsPanning || IsBoxSelecting || !Viewport.IsInside( MousePosition ) ) return;
 
-		ZoomAt( MousePosition, delta < 0 ? 1f / 1.1f : 1f / 0.9f );
+		// ZoomAt scales the visible span, so the zoom changes by its inverse. Stop on the limit
+		// rather than short of it.
+		var zoom = Zoom;
+		var target = (zoom * (delta < 0 ? 1.1f : 0.9f)).Clamp( MinZoom, MaxZoom );
+		if ( target.AlmostEqual( zoom ) ) return;
+
+		ZoomAt( MousePosition, zoom / target );
 	}
 
 	public override void Tick()

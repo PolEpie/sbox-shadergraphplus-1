@@ -21,6 +21,9 @@ public class CommentNode : BaseNodePlus, ICommentNode
 	[Hide, Browsable( false )]
 	public int Layer { get; set; } = 5;
 
+	[Hide, Browsable( false )]
+	public List<string> Members { get; set; } = new();
+
 	[Hide, JsonIgnore]
 	public override DisplayInfo DisplayInfo
 	{

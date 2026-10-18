@@ -297,6 +297,17 @@ partial class ShaderGraphPlus
 			}
 		}
 
+		// Members point at nodes by identifier, which pasting may have renamed. Only nodes loaded
+		// alongside the comment count, so a comment pasted alone doesn't take the originals.
+		foreach ( var comment in nodes.Values.OfType<ICommentNode>() )
+		{
+			comment.Members = comment.Members?
+				.Select( id => identifiers?.TryGetValue( id, out var newId ) ?? false ? newId : id )
+				.Where( nodes.ContainsKey )
+				.Distinct()
+				.ToList() ?? new();
+		}
+
 		return nodes.Values;
 	}
 
@@ -453,6 +464,14 @@ partial class ShaderGraphPlus
 					Output = output.Identifier,
 				} ) );
 			}
+		}
+
+		if ( obj is ICommentNode comment && identifiers is not null )
+		{
+			doc["Members"] = JsonSerializer.SerializeToNode( comment.Members
+				.Where( identifiers.ContainsKey )
+				.Select( id => identifiers[id] )
+				.ToList(), options );
 		}
 	}
 
