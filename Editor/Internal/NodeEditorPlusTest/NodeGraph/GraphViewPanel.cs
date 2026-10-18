@@ -31,13 +31,6 @@ public class GraphViewPanel : CanvasPanel
 	private static readonly Color MajorColor = Color.White.WithAlpha( 0.09f );
 
 	/// <summary>
-	/// The palette row being dragged over us, picked up from the bubbled ondragenter.
-	/// </summary>
-	protected TreeRow _dragSource;
-
-	protected object _dragSource2;
-
-	/// <summary>
 	/// See-through card showing where the dragged palette node will land.
 	/// </summary>
 	private NodeCardUI _dropPreview;
