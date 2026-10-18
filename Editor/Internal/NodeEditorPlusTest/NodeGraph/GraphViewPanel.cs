@@ -17,11 +17,6 @@ public class GraphViewPanel : CanvasPanel
 	/// </summary>
 	public float GridSize { get; set; } = 16f;
 
-	/// <summary>
-	/// Minor lines closer than this on screen are merged, so zooming out never draws thousands of lines.
-	/// </summary>
-	private const float MinLineSpacingPixels = 8f;
-
 	private static readonly Color MinorColor = Color.White.WithAlpha( 0.04f );
 	private static readonly Color MajorColor = Color.White.WithAlpha( 0.09f );
 
@@ -213,8 +208,9 @@ public class GraphViewPanel : CanvasPanel
 		var pixelsPerUnit = viewport.Width / (max.x - min.x);
 
 		var step = GridSize;
+		var minLineSpacingPixels = GridSize / 2; 
 
-		while ( step * pixelsPerUnit < MinLineSpacingPixels )
+		while ( step * pixelsPerUnit < minLineSpacingPixels )
 		{
 			step *= 2;
 		}
