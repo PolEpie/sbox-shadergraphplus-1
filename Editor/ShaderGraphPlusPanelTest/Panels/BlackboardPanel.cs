@@ -140,6 +140,49 @@ public sealed class BlackboardPanel : Panel
 	}
 
 	/// <summary>
+	/// Take a parameter out of the graph along with the nodes that read it and its group entry, the
+	/// way the Qt blackboard does. Asks first when nodes would go with it.
+	/// </summary>
+	internal void Remove( BlackboardParameter parameter )
+	{
+		var nodes = _graph.Nodes
+			.Where( x => x is IBlackboardNode node && node.ParameterIdentifier == parameter.Identifier )
+			.ToArray();
+
+		void Delete()
+		{
+			foreach ( var node in nodes )
+			{
+				_graph.RemoveNode( node );
+			}
+
+			_graph.RemoveParameter( parameter );
+
+			if ( _graph.TryFindGroupData( parameter.GetGroupTitle(), out var group ) )
+			{
+				group.ParameterReferences.Remove( parameter.Identifier );
+
+				if ( group.ParameterReferences.Count == 0 )
+					_graph.RemoveGroupData( group );
+			}
+
+			Rebuild();
+		}
+
+		if ( nodes.Length == 0 )
+		{
+			Delete();
+			return;
+		}
+
+		new Editor.PopupWindow(
+			"Delete Parameter",
+			$"Delete '{parameter.Name}'?\n\nIs referenced by {nodes.Length} parameter node{(nodes.Length == 1 ? "" : "s")}. These references will be cleared.",
+			"Cancel",
+			new Dictionary<string, Action> { ["Delete"] = Delete } ).Show();
+	}
+
+	/// <summary>
 	/// Recreate the rows from the graph, applying the filter.
 	/// </summary>
 	public void Rebuild()
@@ -158,7 +201,7 @@ public sealed class BlackboardPanel : Panel
 
 		foreach ( var parameter in parameters )
 		{
-			_list.AddChild( new ParameterRow( parameter ) );
+			_list.AddChild( new ParameterRow( this, parameter ) );
 		}
 	}
 
@@ -177,8 +220,15 @@ public sealed class BlackboardPanel : Panel
 /// </summary>
 internal sealed class ParameterRow : Panel
 {
-	public ParameterRow( BlackboardParameter parameter )
+	private readonly BlackboardPanel _owner;
+	private readonly BlackboardParameter _parameter;
+	private Sandbox.UI.Menu _menu;
+
+	public ParameterRow( BlackboardPanel owner, BlackboardParameter parameter )
 	{
+		_owner = owner;
+		_parameter = parameter;
+
 		AddClass( "sg-param" );
 
 		var config = TypeConfig( parameter );
@@ -202,6 +252,18 @@ internal sealed class ParameterRow : Panel
 		AddValue( parameter );
 
 		Tooltip = $"{parameter.DisplayInfo.Name} parameter";
+	}
+
+	protected override void OnRightClick( MousePanelEvent e )
+	{
+		e.StopPropagation();
+		_menu?.Delete( true );
+
+		var menu = new Sandbox.UI.Menu();
+		_menu = menu;
+		menu.AddOption( "Delete", "delete", () => _owner.Remove( _parameter ) );
+		menu.Closed += _ => { if ( _menu == menu ) _menu = null; menu.Delete( true ); };
+		menu.Open( this, Popup.PositionMode.UnderMouse );
 	}
 
 	/// <summary>
