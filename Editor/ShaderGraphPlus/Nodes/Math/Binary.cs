@@ -30,12 +30,12 @@ public abstract class Binary : ShaderNodePlus
 		ExpandSize = new Vector3( -85, 5 );
 	}
 
-	public override void OnPaint( Rect rect )
+	public override void OnPaint<T>( T paint, Rect rect )
 	{
 		rect = rect.Shrink( 0, 20, 0, 0 );
-		Paint.SetPen( Theme.TextControl );
-		Paint.SetFont( "Poppins Bold", 20 );
-		Paint.DrawText( rect, Op );
+		paint.SetPen( Theme.TextControl );
+		paint.SetFont( "Poppins", 20, 700 );
+		paint.DrawText( rect, Op );
 	}
 
 	[Output]
@@ -88,12 +88,12 @@ public sealed class Multiply : Binary
 	[Hide]
 	protected override string Op => "*";
 
-	public override void OnPaint( Rect rect )
+	public override void OnPaint<T>( T paint, Rect rect )
 	{
 		rect = rect.Shrink( 0, 20, 0, 0 );
-		Paint.SetPen( Theme.TextControl );
-		Paint.SetFont( "Poppins Bold", 20 );
-		Paint.DrawText( rect, "x" );
+		paint.SetPen( Theme.TextControl );
+		paint.SetFont( "Poppins", 20, 700 );
+		paint.DrawText( rect, "x" );
 	}
 }
 
@@ -430,10 +430,10 @@ public sealed class Power : ShaderNodePlus
 		return new NodeResult( results.Item1.ResultType, $"pow( {results.Item1}, {results.Item2} )" );
 	};
 
-	public override void OnPaint( Rect rect )
+	public override void OnPaint<T>( T paint, Rect rect )
 	{
 		rect = rect.Shrink( 0, 25, 0, 0 );
-		Paint.SetPen( Theme.TextControl );
-		Paint.DrawIcon( rect, "^", 50 );
+		paint.SetPen( Theme.TextControl );
+		paint.DrawIcon( rect, "^", 50 );
 	}
 }

@@ -95,7 +95,7 @@ public interface IGraphNode
 	public bool IsReachable { get; }
 
 	Pixmap? Thumbnail { get; }
-	void OnPaint( Rect rect );
+	void OnPaint<T>( T paint, Rect rect ) where T : EngineNodeGraph.INodePaint, allows ref struct;
 	void OnDoubleClick( MouseEvent e );
 	bool HasTitleBar { get; }
 	bool HasSubtitle { get; }

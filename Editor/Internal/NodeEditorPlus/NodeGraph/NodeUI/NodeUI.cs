@@ -537,7 +537,7 @@ public partial class NodeUI : GraphicsItem
 			Paint.DrawIcon( _thumbRect, icon, (Math.Min( _thumbRect.Width, _thumbRect.Height ) - 8f) * scale );
 		}
 
-		Node.OnPaint( rect );
+		Node.OnPaint( new QtNodePaint(), rect );
 
 		var hasError = !string.IsNullOrWhiteSpace( Node.ErrorMessage );
 		var selectionOutline = SelectionOutline;

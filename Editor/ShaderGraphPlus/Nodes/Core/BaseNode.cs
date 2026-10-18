@@ -1,5 +1,6 @@
 ﻿using Editor;
 using ShaderGraphPlus.Nodes;
+using EngineGraph = EngineNodeGraph;
 
 namespace ShaderGraphPlus;
 
@@ -11,7 +12,7 @@ internal class SubgraphOnlyAttribute : Attribute
 	}
 }
 
-public abstract class BaseNodePlus : IGraphNode
+public abstract class BaseNodePlus : IGraphNode, EngineGraph.INode
 {
 	public event Action Changed;
 
@@ -151,16 +152,50 @@ public abstract class BaseNodePlus : IGraphNode
 	[JsonIgnore, Hide, Browsable( false )]
 	public virtual Pixmap Thumbnail { get; }
 
+	Pixmap _engineThumbnailSource;
+	Texture _engineThumbnail;
+
+	/// <summary>
+	/// The Qt <see cref="Thumbnail"/> as a texture, converted once per pixmap.
+	/// </summary>
+	Texture EngineGraph.INode.Thumbnail
+	{
+		get
+		{
+			var source = Thumbnail;
+			if ( source == _engineThumbnailSource ) return _engineThumbnail;
+
+			_engineThumbnailSource = source;
+			_engineThumbnail = null;
+
+			if ( source is not null )
+			{
+				using var bitmap = Bitmap.CreateFromBytes( source.GetPng() );
+				_engineThumbnail = bitmap?.ToTexture();
+			}
+
+			return _engineThumbnail;
+		}
+	}
+
+	IEnumerable<EngineGraph.IPlugIn> EngineGraph.INode.Inputs => Inputs.OfType<EngineGraph.IPlugIn>();
+
+	IEnumerable<EngineGraph.IPlugOut> EngineGraph.INode.Outputs => Outputs.OfType<EngineGraph.IPlugOut>();
+
+	Color EngineGraph.INode.PrimaryColor => NodeBodyTintColor;
+
+	Color EngineGraph.INode.TitleColor => NodeTitleColor;
+
 	[JsonIgnore, Hide, Browsable( false )]
 	public virtual Color NodeBodyTintColor { get; set; } = Color.Parse( "#303030" )!.Value.Lighten( 2.0f );
 
 	[JsonIgnore, Hide, Browsable( false )]
 	public virtual Color NodeTitleColor { get; set; } = Color.Gray;
 
-	public virtual void OnPaint( Rect rect )
-	{
-
-	}
+	/// <summary>
+	/// Draw over the node, in both the Qt and the panel graph.
+	/// </summary>
+	public virtual void OnPaint<T>( T paint, Rect rect ) where T : EngineNodeGraph.INodePaint, allows ref struct { }
 
 	public virtual void OnDoubleClick( MouseEvent e )
 	{
@@ -371,9 +406,18 @@ public abstract class BaseNodePlus : IGraphNode
 
 }
 
-public record BasePlug( BaseNodePlus Node, PlugInfo Info, Type Type ) : IPlug
+public record BasePlug( BaseNodePlus Node, PlugInfo Info, Type Type ) : IPlug, EngineGraph.IPlug
 {
 	IGraphNode IPlug.Node => Node;
+
+	EngineGraph.INode EngineGraph.IPlug.Node => Node;
+
+	Type EngineGraph.IPlug.Type => ((IPlug)this).Type;
+
+	EngineGraph.NodeValueEditor EngineGraph.IPlug.CreateEditor( EngineGraph.PlugPanel plug )
+	{
+		return ShaderGraphPlusPanelTest.PanelValueEditors.Create( plug );
+	}
 
 	Type IPlug.Type { get; set; } = Type;
 
@@ -431,8 +475,14 @@ public record BasePlug( BaseNodePlus Node, PlugInfo Info, Type Type ) : IPlug
 
 }
 
-public record BasePlugIn( BaseNodePlus Node, PlugInfo Info, Type Type ) : BasePlug( Node, Info, Type ), IPlugIn
+public record BasePlugIn( BaseNodePlus Node, PlugInfo Info, Type Type ) : BasePlug( Node, Info, Type ), IPlugIn, EngineGraph.IPlugIn
 {
+	EngineGraph.IPlugOut EngineGraph.IPlugIn.ConnectedOutput
+	{
+		get => ((IPlugIn)this).ConnectedOutput as EngineGraph.IPlugOut;
+		set => ((IPlugIn)this).ConnectedOutput = value as IPlugOut;
+	}
+
 	IPlugOut IPlugIn.ConnectedOutput
 	{
 		get
@@ -510,7 +560,7 @@ public record BasePlugIn( BaseNodePlus Node, PlugInfo Info, Type Type ) : BasePl
 	}
 }
 
-public record BasePlugOut( BaseNodePlus Node, PlugInfo Info, Type Type ) : BasePlug( Node, Info, Type ), IPlugOut;
+public record BasePlugOut( BaseNodePlus Node, PlugInfo Info, Type Type ) : BasePlug( Node, Info, Type ), IPlugOut, EngineGraph.IPlugOut;
 
 public class PlugInfo
 {

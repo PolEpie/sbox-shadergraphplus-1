@@ -80,11 +80,11 @@ public abstract class UnaryCurve : Unary
 		ExpandSize = new Vector2( -12 * 6, 12 );
 	}
 
-	public override void OnPaint( Rect rect )
+	public override void OnPaint<T>( T paint, Rect rect )
 	{
 		rect = rect.Shrink( 20, 28, 20, 6 );
-		Paint.SetBrush( Theme.TextControl );
-		Paint.SetPen( Theme.TextControl, 2 );
+		paint.SetBrush( Theme.TextControl );
+		paint.SetPen( Theme.TextControl, 2 );
 		var inc = 1f / 16f;
 		List<Vector2> points = new List<Vector2>();
 		for ( var i = 0f; i < 1f; i += inc )
@@ -97,7 +97,7 @@ public abstract class UnaryCurve : Unary
 		{
 			points.Add( points[i] );
 		}
-		Paint.DrawPolygon( points.ToArray() );
+		paint.DrawPolygon( points.ToArray() );
 	}
 }
 
@@ -182,12 +182,12 @@ public sealed class Rsqrt : Unary
 		ExpandSize = new Vector2( -12 * 8, 12 );
 	}
 
-	public override void OnPaint( Rect rect )
+	public override void OnPaint<T>( T paint, Rect rect )
 	{
 		rect = rect.Shrink( 2, 20, 0, 0 );
-		Paint.SetPen( Theme.TextControl );
-		Paint.SetFont( "Poppins Bold", 12 );
-		Paint.DrawText( rect, " x" );
+		paint.SetPen( Theme.TextControl );
+		paint.SetFont( "Poppins", 12, 700 );
+		paint.DrawText( rect, " x" );
 		List<Vector2> points = new()
 		{
 			rect.TopLeft + new Vector2(10, 20),
@@ -200,7 +200,7 @@ public sealed class Rsqrt : Unary
 		{
 			points.Add( points[i] );
 		}
-		Paint.DrawPolygon( points.ToArray() );
+		paint.DrawPolygon( points.ToArray() );
 	}
 
 	[Hide]
@@ -224,12 +224,12 @@ public sealed class Sqrt : Unary
 		ExpandSize = new Vector2( -12 * 8, 12 );
 	}
 
-	public override void OnPaint( Rect rect )
+	public override void OnPaint<T>( T paint, Rect rect )
 	{
 		rect = rect.Shrink( 2, 20, 0, 0 );
-		Paint.SetPen( Theme.TextControl );
-		Paint.SetFont( "Poppins Bold", 12 );
-		Paint.DrawText( rect, " x" );
+		paint.SetPen( Theme.TextControl );
+		paint.SetFont( "Poppins", 12, 700 );
+		paint.DrawText( rect, " x" );
 		List<Vector2> points = new()
 		{
 			rect.TopLeft + new Vector2(10, 20),
@@ -242,7 +242,7 @@ public sealed class Sqrt : Unary
 		{
 			points.Add( points[i] );
 		}
-		Paint.DrawPolygon( points.ToArray() );
+		paint.DrawPolygon( points.ToArray() );
 	}
 
 	[Hide]
@@ -340,14 +340,14 @@ public sealed class Exponential : Unary
 		ExpandSize = new Vector2( -12 * 6, 12 );
 	}
 
-	public override void OnPaint( Rect rect )
+	public override void OnPaint<T>( T paint, Rect rect )
 	{
 		rect = rect.Shrink( 0, 20, 0, 0 );
-		Paint.SetPen( Theme.TextControl );
-		Paint.SetFont( "Poppins Bold", 16 );
-		Paint.DrawText( rect, (Base == ExponentBase.BaseE) ? "e" : "2" );
-		Paint.SetFont( "Poppins Bold", 8 );
-		Paint.DrawText( rect.Shrink( 20, 0, 0, 16 ), "x" );
+		paint.SetPen( Theme.TextControl );
+		paint.SetFont( "Poppins", 16, 700 );
+		paint.DrawText( rect, (Base == ExponentBase.BaseE) ? "e" : "2" );
+		paint.SetFont( "Poppins", 8, 700 );
+		paint.DrawText( rect.Shrink( 20, 0, 0, 16 ), "x" );
 	}
 
 	[Hide]

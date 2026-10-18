@@ -1,4 +1,4 @@
-﻿using Editor;
+using Editor;
 using NodeEditorPlusTest;
 using Sandbox.UI;
 using Sandbox.UI.Construct;
@@ -146,8 +146,13 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		ConsolePanel.Hook();
 
-		_graphView = new ShaderGraphPlusViewPanel();
-
+		_graphView = new ShaderGraphPlusViewPanel { Graph = _graph };
+		_graphView.SelectionChanged += () =>
+		{
+			// Nothing, or several, selected shows the graph, like the Qt editor
+			var selected = _graphView.SelectedNodes.Take( 2 ).ToArray();
+			_properties.Target = selected.Length == 1 ? (object)selected[0].Node : _graph;
+		};
 		_palette = new PalettePanel( IsSubgraph );
 
 		_blackboard = new BlackboardPanel( IsSubgraph );
@@ -262,7 +267,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		_blackboard.Graph = _graph;
 		_properties.Target = _graph;
 
-		_graphView.RebuildFromGraph();
+		_graphView.Graph = _graph;
 
 		if ( !IsSubgraph )
 		{
