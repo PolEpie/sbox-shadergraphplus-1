@@ -520,7 +520,6 @@ public sealed class BlackboardPanel : Panel
 		}
 	}
 
-	
 	internal void OnGraphDirty()
 	{
 		if ( Graph is null )
@@ -530,7 +529,6 @@ public sealed class BlackboardPanel : Panel
 		var parameters = Graph.Parameters.ToList();
 		*/
 	}
-
 
 	private void OpenGroupNameDialog( string title, string initialValue, Action<string> accepted )
 	{
