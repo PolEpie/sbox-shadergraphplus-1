@@ -254,9 +254,7 @@ public class GraphViewPanel : CanvasPanel
 				CanvasToScreen( Position( nodeCardB ) + new Vector2( 0, nodeCardB.Box.Rect.Height / 2 ) / ScaleToScreen ) );
 		}
 	}
-	
-	Vector2 Position( Panel panel ) => (panel.Box.Rect.Position - Content.Box.Rect.Position) / ScaleToScreen;
-	
+
 	/// <summary>
 	/// Vertical and horizontal lines every <paramref name="step"/> units, skipping multiples of
 	/// <paramref name="skipEvery"/> so minor lines never overlap the major ones and double their alpha.
@@ -337,6 +335,8 @@ public class GraphViewPanel : CanvasPanel
 	{
 
 	}
+
+	Vector2 Position( Panel panel ) => (panel.Box.Rect.Position - Content.Box.Rect.Position) / ScaleToScreen;
 
 	private bool IsHoveringOverView()
 	{
