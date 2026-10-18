@@ -19,12 +19,10 @@ public sealed class BlackboardPanel : Panel
 	private string _filter = "";
 	private readonly Panel _list;
 
-	private BlackboardParameter _selected;
-
 	/// <summary>
 	/// The parameter picked in the list, or null.
 	/// </summary>
-	public BlackboardParameter Selected => _selected;
+	public BlackboardParameter Selected { get; private set; }
 
 	/// <summary>
 	/// The selection changed - to null when it's cleared.
@@ -174,7 +172,7 @@ public sealed class BlackboardPanel : Panel
 
 			Graph.RemoveParameter( parameter );
 
-			if ( _selected == parameter )
+			if ( Selected == parameter )
 				Select( null );
 
 			if ( Graph.TryFindGroupData( parameter.GetGroupTitle(), out var group ) )
@@ -206,10 +204,10 @@ public sealed class BlackboardPanel : Panel
 	/// </summary>
 	public void Select( BlackboardParameter parameter )
 	{
-		if ( _selected == parameter )
+		if ( Selected == parameter )
 			return;
 
-		_selected = parameter;
+		Selected = parameter;
 
 		foreach ( var row in _list.Children.OfType<ParameterRow>() )
 		{
@@ -239,7 +237,7 @@ public sealed class BlackboardPanel : Panel
 		foreach ( var parameter in parameters )
 		{
 			var row = _list.AddChild( new ParameterRow( this, parameter ) );
-			row.SetSelected( parameter == _selected );
+			row.SetSelected( parameter == Selected );
 		}
 	}
 
