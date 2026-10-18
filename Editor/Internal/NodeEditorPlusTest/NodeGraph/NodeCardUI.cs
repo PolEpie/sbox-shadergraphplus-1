@@ -21,17 +21,20 @@ public sealed class NodeCardUI : Panel
 
 	private readonly Header _header;
 
-	public NodeCardUI()
-	{
+	public GraphViewPanel Graph { get; private set; }
 
+	public NodeCardUI( GraphViewPanel graph )
+	{
+		Graph = graph;
 	}
 
 	/// <summary>
 	/// A see-through stand-in shown while a palette row is dragged over the graph. It ignores the
 	/// mouse so it never becomes the drop target or starts a card drag.
 	/// </summary>
-	public NodeCardUI( TypeDescription type, Vector2 position, bool isPreview = false )
+	public NodeCardUI( GraphViewPanel graph, TypeDescription type, Vector2 position, bool isPreview = false )
 	{
+		Graph = graph;
 		Type = type;
 		AddClass( "sg-node" );
 
@@ -92,12 +95,13 @@ public sealed class NodeCardUI : Panel
 
 		protected override void OnDragMove( Vector2 delta )
 		{
-			_card.MoveTo( GraphViewPanel.SnapToGrid( DragOrigin + delta ) );
+			var position = DragOrigin + delta;
+			_card.MoveTo( position.SnapToGrid( _card.Graph.GridSize ) );
 		}
 
 		protected override void OnDragFinish( bool cancelled )
 		{
-			_card.MoveTo( cancelled ? DragOrigin : GraphViewPanel.SnapToGrid( Position ) );
+			_card.MoveTo( cancelled ? DragOrigin : Position.SnapToGrid( _card.Graph.GridSize ) );
 		}
 	}
 }

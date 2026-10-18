@@ -15,12 +15,7 @@ public class GraphViewPanel : CanvasPanel
 	/// <summary>
 	/// Spacing of the minor grid lines, in canvas units. Nodes snap to it.
 	/// </summary>
-	public const float GridSize = 16f;
-
-	/// <summary>
-	/// Every Nth minor line is drawn as a major line.
-	/// </summary>
-	private const int MajorEvery = 8;
+	public float GridSize { get; set; } = 16f;
 
 	/// <summary>
 	/// Minor lines closer than this on screen are merged, so zooming out never draws thousands of lines.
@@ -76,20 +71,12 @@ public class GraphViewPanel : CanvasPanel
 
 		var typeDescription = type.CreateNodeTest();
 
-		var nodeCard = new NodeCardUI( typeDescription, position.SnapToGrid( GridSize ) );
+		var nodeCard = new NodeCardUI( this, typeDescription, position.SnapToGrid( GridSize ) );
 
 		Content.AddChild( nodeCard );
 		_cards.Add( nodeCard );
 
 		return nodeCard;
-	}
-
-	/// <summary>
-	/// Round a canvas position to the nearest grid intersection.
-	/// </summary>
-	public static Vector2 SnapToGrid( Vector2 position )
-	{
-		return position.SnapToGrid( GridSize );
 	}
 
 	public override void Tick()
@@ -126,7 +113,7 @@ public class GraphViewPanel : CanvasPanel
 			{
 				var position = ScreenToCanvas( MousePosition ).SnapToGrid( GridSize );
 
-				_dropPreview = Content.AddChild( new NodeCardUI( EditorTypeLibrary.GetType( info.Fullname ), position, true ) );
+				_dropPreview = Content.AddChild( new NodeCardUI( this, EditorTypeLibrary.GetType( info.Fullname ), position, true ) );
 			}
 		}
 
@@ -232,7 +219,8 @@ public class GraphViewPanel : CanvasPanel
 			step *= 2;
 		}
 
-		var major = Math.Max( step, GridSize * MajorEvery );
+		var majorEvery = GridSize / 2;
+		var major = Math.Max( step, GridSize * majorEvery );
 
 		if ( step < major )
 		{
