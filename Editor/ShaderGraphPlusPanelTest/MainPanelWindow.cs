@@ -147,14 +147,14 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		ConsolePanel.Hook();
 
 		_graphView = new ShaderGraphPlusViewPanel();
-	
+
 		_palette = new PalettePanel( IsSubgraph );
-		
+
 		_blackboard = new BlackboardPanel( IsSubgraph );
 		_blackboard.Graph = _graph;
 		_blackboard.OnDirty += ( evaluate ) => SetDirty( evaluate );
 		//_blackboard.OnSelected = parameter => _properties.Target = (object)parameter ?? _graph;
-		
+
 		_properties = new PropertiesPanel();
 		_properties.Target = _graph;
 		_properties.PropertyUpdated += OnPropertyUpdated;

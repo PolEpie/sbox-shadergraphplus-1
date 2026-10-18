@@ -472,7 +472,7 @@ public sealed class BlackboardPanel : Panel
 
 		foreach ( var parameter in parameters )
 		{
-			var row = _list.AddChild( new ParameterRow( this, (BlackboardParameter)parameter) );
+			var row = _list.AddChild( new ParameterRow( this, (BlackboardParameter)parameter ) );
 			row.SetSelected( parameter == Selected );
 		}
 	}
@@ -692,7 +692,7 @@ internal sealed class ParameterRow : Panel
 
 		var menu = new Sandbox.UI.Menu();
 		_menu = menu;
-		menu.AddOption( "Delete", "delete", () => _blackboard.Remove( (BlackboardParameter)Parameter) );
+		menu.AddOption( "Delete", "delete", () => _blackboard.Remove( (BlackboardParameter)Parameter ) );
 		menu.Closed += _ => { if ( _menu == menu ) _menu = null; menu.Delete( true ); };
 		menu.Open( this, Popup.PositionMode.UnderMouse );
 	}
