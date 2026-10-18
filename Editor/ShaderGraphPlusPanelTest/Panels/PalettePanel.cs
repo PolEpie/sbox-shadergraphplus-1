@@ -6,13 +6,11 @@ namespace ShaderGraphPlusPanelTest;
 
 public sealed class PalettePanel : Panel
 {
-	private bool _isSubgraph { get; }
-
 	private TextInput _searchFilter;
-
 	private readonly Sandbox.UI.TreeView<PaletteTreeNode> _tree;
 
 	private bool _wasDragging;
+	private bool _isSubgraph { get; }
 
 	public PalettePanel( bool isSubgraph ) : base()
 	{
