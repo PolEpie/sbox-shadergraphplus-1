@@ -57,7 +57,21 @@ public static class ShaderGraphPlusStyleSheets
 		.sg-param > .value { flex-direction: row; align-items: center; flex-shrink: 1; min-width: 0; gap: 5px; }
 		.sg-param > .value > .text { color: #c4c8cf; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 		.sg-param > .value > .swatch { flex-shrink: 0; width: 12px; height: 12px; border-radius: 2px; border: 1px solid #00000080; }
-		.sg-param > .value > .icon { font-size: 13px; color: #8a8f98; }
+		.sg-param > .value > .thumb { flex-shrink: 0; width: 22px; height: 22px; border-radius: 3px; background-size: cover; background-position: center; background-color: #ffffff0d; }
+
+		.sg-tip { flex-direction: column; gap: 6px; max-width: 320px; }
+		.sg-tip > .head { flex-direction: row; align-items: center; gap: 8px; }
+		.sg-tip > .head > .name { font-size: 13px; font-weight: 600; }
+		.sg-tip > .description { color: #8a8f98; font-size: 11px; }
+		.sg-tip > .preview { width: 96px; height: 96px; border-radius: 4px; background-size: cover; background-position: center; background-color: #ffffff0d; }
+		.sg-tip > .detail { flex-direction: row; align-items: center; gap: 8px; font-size: 11px; }
+		.sg-tip > .detail > .key { flex-shrink: 0; width: 52px; color: #8a8f98; }
+		.sg-tip > .detail > .text, .sg-tip .value > .text { color: #c4c8cf; }
+		.sg-tip .value { flex-direction: row; align-items: center; gap: 5px; }
+		.sg-tip .value > .swatch { flex-shrink: 0; width: 12px; height: 12px; border-radius: 2px; border: 1px solid #00000080; }
+		.sg-tip > .tags { flex-direction: row; flex-wrap: wrap; gap: 4px; }
+		.sg-tip > .tags > .tag { padding: 0px 5px; border-radius: 3px; background-color: #31353e; color: #9aa0aa; font-size: 10px; }
+		.sg-tip > .hint { color: #6e737c; font-size: 10px; }
 
 		.sg-list { flex-direction: column; flex-grow: 1; padding: 4px 0px; }
 		.sg-list .category { padding: 8px 10px 4px 10px; color: #8a8f98; font-size: 11px; font-weight: 600; text-transform: uppercase; }

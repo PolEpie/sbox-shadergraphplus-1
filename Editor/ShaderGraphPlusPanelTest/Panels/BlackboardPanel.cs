@@ -290,9 +290,58 @@ internal sealed class ParameterRow : Panel
 			tags.Add.Label( tag, "tag" );
 		}
 
-		AddValue( parameter );
+		AddValue( this, parameter );
 
-		Tooltip = $"{parameter.DisplayInfo.Name} parameter";
+		OnTooltip = BuildTooltip;
+	}
+
+	/// <summary>
+	/// Full name, type, description, a big preview for textures, then default, range, group and tags.
+	/// </summary>
+	private void BuildTooltip( Panel tip )
+	{
+		// Tooltips open in their own window, so bring the styles along
+		tip.StyleSheet.AddInline( ShaderGraphPlusStyleSheets.ShaderGraphPlusScss, "shadergraphplus_style" );
+		tip.AddClass( "sg-tip" );
+
+		var head = tip.Add.Panel( "head" );
+		AddTypeChip( head, TypeConfig( _parameter ) );
+		head.Add.Label( _parameter.Name, "name" );
+
+		if ( !string.IsNullOrWhiteSpace( _parameter.DisplayInfo.Description ) )
+			tip.Add.Label( _parameter.DisplayInfo.Description, "description" );
+
+		if ( TextureOf( _parameter ) is { DefaultTexture: { Length: > 0 } path } )
+		{
+			tip.Add.Panel( "preview" ).Style.BackgroundImage = Texture.Load( $"thumb:{path}" );
+			Detail( tip, "Texture" ).Add.Label( path, "text" );
+		}
+		else if ( _parameter is not IBlackboardSubgraphOutputParameter )
+		{
+			AddValue( Detail( tip, "Default" ), _parameter );
+		}
+
+		if ( _parameter is IRangedBlackboardMaterialParameter ranged )
+			Detail( tip, "Range" ).Add.Label( $"{Format( ranged.GetRangeMin() )} – {Format( ranged.GetRangeMax() )}", "text" );
+
+		Detail( tip, "Group" ).Add.Label( _parameter.GetGroupTitle(), "text" );
+
+		// The range has its own line above
+		var tags = Tags( _parameter ).Where( x => !x.Contains( '–' ) ).ToList();
+		if ( tags.Count > 0 )
+		{
+			var row = tip.Add.Panel( "tags" );
+			foreach ( var tag in tags ) row.Add.Label( tag, "tag" );
+		}
+
+		tip.Add.Label( "Right-click to delete", "hint" );
+	}
+
+	private static Panel Detail( Panel tip, string key )
+	{
+		var row = tip.Add.Panel( "detail" );
+		row.Add.Label( key, "key" );
+		return row;
 	}
 
 	/// <summary>
@@ -345,9 +394,9 @@ internal sealed class ParameterRow : Panel
 		chip.Add.Label( config.Name, "text" ).Style.FontColor = config.Color;
 	}
 
-	private void AddValue( BlackboardParameter parameter )
+	private static void AddValue( Panel parent, BlackboardParameter parameter )
 	{
-		var value = Add.Panel( "value" );
+		var value = parent.Add.Panel( "value" );
 
 		switch ( parameter )
 		{
@@ -401,13 +450,22 @@ internal sealed class ParameterRow : Panel
 	{
 		if ( !string.IsNullOrWhiteSpace( texture.DefaultTexture ) )
 		{
-			value.Add.Icon( "image", "icon" );
-			value.Add.Label( System.IO.Path.GetFileName( texture.DefaultTexture ), "text" );
+			// The asset browser's thumbnail; the path is on hover
+			var thumb = value.Add.Panel( "thumb" );
+			thumb.Style.BackgroundImage = Texture.Load( $"thumb:{texture.DefaultTexture}" );
+			thumb.Tooltip = texture.DefaultTexture;
 			return;
 		}
 
 		AddSwatch( value, texture.DefaultColor );
 	}
+
+	private static TextureInput? TextureOf( BlackboardParameter parameter ) => parameter switch
+	{
+		BlackboardTextureMaterialParameter t => t.Value,
+		IBlackboardSubgraphInputParameter when parameter.GetValue() is TextureInput t => t,
+		_ => null,
+	};
 
 	/// <summary>
 	/// Short labels for the settings that change how the parameter compiles or shows up.
@@ -423,14 +481,7 @@ internal sealed class ParameterRow : Panel
 		if ( parameter is IBlackboardMaterialParameter { UI: FloatParameterUI { Type: UIType.Slider } } )
 			yield return "Slider";
 
-		var texture = parameter switch
-		{
-			BlackboardTextureMaterialParameter t => t.Value,
-			IBlackboardSubgraphInputParameter when parameter.GetValue() is TextureInput t => t,
-			_ => (TextureInput?)null,
-		};
-
-		if ( texture is { } tex )
+		if ( TextureOf( parameter ) is { } tex )
 		{
 			if ( tex.SrgbRead ) yield return "sRGB";
 			if ( tex.ColorSpace == TextureColorSpace.Linear ) yield return "Linear";
