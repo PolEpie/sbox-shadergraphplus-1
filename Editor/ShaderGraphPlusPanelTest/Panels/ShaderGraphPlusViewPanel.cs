@@ -67,11 +67,33 @@ public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 
 
 		_blackboard = blackboard;
+		_blackboard.OnSelected += OnParameterSelected;
+		SelectionChanged += OnGraphSelectionChanged;
 
 		// Derived initializers have run, so an overridden CommentNodeType is already set
 		if ( CommentNodeType is not null ) CommentFactory = CreateCommentNode;
 
 		PlugDroppedOnEmpty += BuildConnectionDropContextMenu;
+	}
+
+	bool _pickingParameter;
+
+	/// <summary>
+	/// Picking a parameter takes the selection from the graph, so the next click there - on a node
+	/// or empty space - changes it and ends the highlight.
+	/// </summary>
+	void OnParameterSelected( BlackboardParameter parameter )
+	{
+		if ( parameter is null ) return;
+
+		_pickingParameter = true;
+		ClearSelection();
+		_pickingParameter = false;
+	}
+
+	void OnGraphSelectionChanged()
+	{
+		if ( !_pickingParameter ) _blackboard?.Select( null );
 	}
 
 	EngineNodeGraph.ICommentNode CreateCommentNode() => CommentNodeType.CreateNode( Graph ) as EngineNodeGraph.ICommentNode;
