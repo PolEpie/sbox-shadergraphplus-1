@@ -33,9 +33,7 @@ public class GraphViewPanel : NodeGraphPanel
 		AddClass( "sg-graph" );
 	}
 
-	/// <summary>
-	/// Create a node of <paramref name="type"/> at <paramref name="position"/> and add it to the graph.
-	/// </summary>
+
 	public NodePanel CreateNewNode( INodeType type, Vector2 position )
 	{
 		if ( type is null || Graph is null )
@@ -49,9 +47,6 @@ public class GraphViewPanel : NodeGraphPanel
 		return AddNode( node );
 	}
 
-	/// <summary>
-	/// Creates comments, or null when this graph has none.
-	/// </summary>
 	protected virtual INodeType CommentNodeType { get; }
 
 	protected virtual INodeType RerouteNodeType { get; }
@@ -64,9 +59,6 @@ public class GraphViewPanel : NodeGraphPanel
 
 	public IEnumerable<CommentPanel> Comments => Nodes.OfType<CommentPanel>();
 
-	/// <summary>
-	/// The comment holding <paramref name="node"/>, or null.
-	/// </summary>
 	public CommentPanel FindComment( NodePanel node )
 	{
 		if ( node is CommentPanel ) return null;
@@ -74,10 +66,6 @@ public class GraphViewPanel : NodeGraphPanel
 		return Comments.FirstOrDefault( x => x.Comment.Members?.Contains( node.Node.Identifier ) ?? false );
 	}
 
-	/// <summary>
-	/// Add a comment at <paramref name="position"/> holding <paramref name="members"/>, taking them
-	/// out of any comment they were in.
-	/// </summary>
 	public CommentPanel CreateComment( Vector2 position, IReadOnlyList<NodePanel> members )
 	{
 		if ( Graph is null || CommentNodeType?.CreateNode( Graph as INodeGraph ) is not INode node || node is not ICommentNode comment )
@@ -96,9 +84,6 @@ public class GraphViewPanel : NodeGraphPanel
 		return panel as CommentPanel;
 	}
 
-	/// <summary>
-	/// Put <paramref name="nodes"/> in <paramref name="comment"/>, out of any comment they were in.
-	/// </summary>
 	public void AddToComment( CommentPanel comment, IEnumerable<NodePanel> nodes )
 	{
 		var members = comment.Comment.Members ??= new();
@@ -120,25 +105,20 @@ public class GraphViewPanel : NodeGraphPanel
 		}
 	}
 
-	/// <summary>
-	/// A comment only joins a box selection when the box holds all of it, so selecting nodes
-	/// inside one doesn't drag the whole comment along.
-	/// </summary>
-	protected override bool BoxSelects( NodePanel node, Rect box ) => node is CommentPanel
-		? box.IsInside( new Rect( node.Position, node.Size ), true )
-		: base.BoxSelects( node, box );
+	protected override bool BoxSelects( NodePanel nodePanel, Rect box )
+	{
+		if ( nodePanel is CommentPanel )
+		{
+			return box.IsInside( new Rect( nodePanel.Position, nodePanel.Size ), true );
+		}
+
+		return base.BoxSelects( nodePanel, box );
+	}
 
 	CommentPanel _dropTarget;
 
-	/// <summary>
-	/// Selected nodes that would join a comment if dropped in one: not comments, and in none yet.
-	/// </summary>
 	IEnumerable<NodePanel> FreeSelectedNodes() => SelectedNodes.Where( x => x is not CommentPanel && FindComment( x ) is null );
 
-	/// <summary>
-	/// While nodes are dragged, highlight the comment they'd join: the smallest one under the
-	/// mouse that isn't moving with them.
-	/// </summary>
 	internal void UpdateCommentDrop()
 	{
 		var mouse = ScreenToCanvas( MousePosition );
