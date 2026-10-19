@@ -29,6 +29,16 @@ public sealed class ShaderGraphPlusViewPanel : GraphViewPanel
 
 	protected override INodeType RerouteNodeType { get; } = new ClassNodeType( EditorTypeLibrary.GetType<ReroutePlus>() );
 
+	/// <summary>
+	/// Same as the Qt editor's, so nodes copied in one paste into the other.
+	/// </summary>
+	protected override string ClipboardIdent => "shadergraphplus";
+
+	/// <summary>
+	/// Parameter nodes stay with their blackboard parameter, like the Qt editor's copy.
+	/// </summary>
+	protected override bool CanCopy( EngineNodeGraph.NodePanel node ) => base.CanCopy( node ) && node.Node is not IBlackboardNode;
+
 
 	public ShaderGraphPlusViewPanel() : base()
 	{

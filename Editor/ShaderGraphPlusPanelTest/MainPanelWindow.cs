@@ -456,17 +456,17 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 	private void CutSelection()
 	{
-		SGPLogger.Info( $"TODO : Cut Selection" );
+		_graphView.CutSelection();
 	}
 
 	private void CopySelection()
 	{
-		SGPLogger.Info( $"TODO : Copy Selection" );
+		_graphView.CopySelection();
 	}
 
 	private void PasteSelection()
 	{
-		SGPLogger.Info( $"TODO : Paste Selection" );
+		_graphView.Paste( EditorUtility.Clipboard.Paste() );
 	}
 
 	private void SelectAll()
