@@ -7,7 +7,6 @@ namespace NodeEditorPlusTest;
 
 public class GraphViewPanel : NodeGraphPanel
 {
-
 	public new INodeGraph Graph
 	{
 		get => (INodeGraph)base.Graph;
@@ -33,6 +32,11 @@ public class GraphViewPanel : NodeGraphPanel
 	protected virtual INodeType CommentNodeType { get; }
 	protected virtual INodeType RerouteNodeType { get; }
 
+	/// <summary>
+	/// Most results a filtered node list shows, like the Qt editor's.
+	/// </summary>
+	const int MaxFilteredResults = 20;
+
 	public GraphViewPanel() : base()
 	{
 		AddClass( ShaderGraphPlusCssClasses.EditorDockPane );
@@ -45,11 +49,6 @@ public class GraphViewPanel : NodeGraphPanel
 	}
 
 	EngineNodeGraph.ICommentNode CreateCommentNode() => CommentNodeType.CreateNode( Graph ) as EngineNodeGraph.ICommentNode;
-
-	/// <summary>
-	/// Most results a filtered node list shows, like the Qt editor's.
-	/// </summary>
-	const int MaxFilteredResults = 20;
 
 	protected virtual IEnumerable<INodeType> GetRelevantNodes( NodeQuery query )
 	{
