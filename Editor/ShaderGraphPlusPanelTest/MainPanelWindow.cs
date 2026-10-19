@@ -389,7 +389,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 			DefaultSuffix = $".{FileExtension}"
 		};
 
-		fd.SetNameFilter( $"{FileType} ( *.{FileExtension})" );
+		fd.SetNameFilter( $"{FileType} ( *.{ShaderGraphPlus.ShaderGraphPlusGlobals.AssetTypeExtension};*.{ShaderGraphPlus.ShaderGraphPlusGlobals.SubgraphAssetTypeExtension})" );
 
 		if ( !fd.Execute() )
 			return;
@@ -414,7 +414,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		var graph = JsonSerializer.Deserialize<ShaderGraphPlus.ShaderGraphPlus>( System.IO.File.ReadAllText( path ), ShaderGraphPlus.ShaderGraphPlus.SerializerOptions() );
 		graph.Path = asset.RelativePath;
-		graph.IsSubgraph = IsSubgraph;
+		//graph.IsSubgraph = IsSubgraph;
 
 		if ( !graph.IsSubgraph )
 		{
