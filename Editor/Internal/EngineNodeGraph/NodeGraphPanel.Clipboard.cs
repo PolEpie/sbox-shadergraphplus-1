@@ -22,6 +22,12 @@ public partial class NodeGraphPanel
 	/// </summary>
 	protected virtual bool CanCopy( NodePanel node ) => node.Node.CanRemove;
 
+	/// <summary>
+	/// The clipboard's text, for the menu's Paste. Game code can't read the clipboard - Ctrl+V hands
+	/// it over instead - so by default the menu doesn't offer to paste; the editor can.
+	/// </summary>
+	protected virtual string ReadClipboard() => null;
+
 	NodePanel[] CopyableSelection() => SelectedNodes.Where( CanCopy ).ToArray();
 
 	/// <summary>
@@ -44,9 +50,16 @@ public partial class NodeGraphPanel
 	}
 
 	/// <summary>
-	/// Put the selection on the clipboard. False when nothing in it can be copied.
+	/// Put the selection on the clipboard.
 	/// </summary>
-	public bool CopySelection()
+	public void CopySelection() => TryCopy();
+
+	/// <summary>
+	/// Copy the selection, then remove what was copied.
+	/// </summary>
+	public void CutSelection() => TryCut();
+
+	bool TryCopy()
 	{
 		if ( SerializeSelection() is not { } text ) return false;
 
@@ -54,28 +67,26 @@ public partial class NodeGraphPanel
 		return true;
 	}
 
-	/// <summary>
-	/// Copy the selection, then remove what was copied. False when nothing in it can be copied.
-	/// </summary>
-	public bool CutSelection()
+	bool TryCut()
 	{
-		if ( !CopySelection() ) return false;
+		if ( !TryCopy() ) return false;
 
 		RemoveCopyable();
 		return true;
 	}
 
 	/// <summary>
-	/// Add the nodes in <paramref name="text"/>, from <see cref="SerializeSelection"/>, centred on the
-	/// mouse and selected. False when the text isn't this graph's nodes.
+	/// Add the nodes in <paramref name="text"/>, from <see cref="SerializeSelection"/>, centred on
+	/// <paramref name="position"/> in canvas units, or the mouse, and selected. False when the text
+	/// isn't this graph's nodes.
 	/// </summary>
-	public bool Paste( string text )
+	public bool Paste( string text, Vector2? position = null )
 	{
 		if ( Graph is null || !TryDecode( text, out var json ) ) return false;
 
 		try
 		{
-			ShowPasted( Graph.DeserializeNodes( json ).ToArray() );
+			ShowPasted( Graph.DeserializeNodes( json ).ToArray(), position ?? MouseTarget );
 		}
 		catch ( Exception e )
 		{
@@ -93,7 +104,7 @@ public partial class NodeGraphPanel
 		var nodes = CopyableSelection();
 		if ( nodes.Length == 0 || Graph?.SerializeNodes( nodes.Select( x => x.Node ) ) is not { } json ) return;
 
-		ShowPasted( Graph.DeserializeNodes( json ).ToArray() );
+		ShowPasted( Graph.DeserializeNodes( json ).ToArray(), MouseTarget );
 	}
 
 	void RemoveCopyable()
@@ -127,14 +138,19 @@ public partial class NodeGraphPanel
 	}
 
 	/// <summary>
-	/// Show freshly added <paramref name="nodes"/> centred on the mouse, as the new selection.
+	/// The mouse in canvas units, or the middle of the view when it's outside.
 	/// </summary>
-	void ShowPasted( IReadOnlyList<INode> nodes )
+	Vector2 MouseTarget => ScreenToCanvas( Viewport.IsInside( MousePosition ) ? MousePosition : Viewport.Center );
+
+	/// <summary>
+	/// Show freshly added <paramref name="nodes"/> centred on <paramref name="position"/>, as the new selection.
+	/// </summary>
+	void ShowPasted( IReadOnlyList<INode> nodes, Vector2 position )
 	{
 		if ( nodes.Count == 0 ) return;
 
 		var center = new Vector2( nodes.Average( x => x.Position.x ), nodes.Average( x => x.Position.y ) );
-		var offset = ScreenToCanvas( Viewport.IsInside( MousePosition ) ? MousePosition : Viewport.Center ) - center;
+		var offset = position - center;
 
 		DeselectNodes();
 		DeselectConnections();
@@ -169,8 +185,8 @@ public partial class NodeGraphPanel
 	bool HandleClipboard( PanelEvent e ) => e switch
 	{
 		PasteEvent paste => Paste( paste.ClipboardValue ),
-		CutEvent => CutSelection(),
-		_ => CopySelection(),
+		CutEvent => TryCut(),
+		_ => TryCopy(),
 	};
 
 	static bool FromTextEntry( PanelEvent e ) => e.Target?.AncestorsAndSelf.Any( x => x is TextEntry ) == true;
