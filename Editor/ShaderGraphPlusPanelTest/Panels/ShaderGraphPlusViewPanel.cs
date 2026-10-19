@@ -98,12 +98,6 @@ public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 
 	EngineNodeGraph.ICommentNode CreateCommentNode() => CommentNodeType.CreateNode( Graph ) as EngineNodeGraph.ICommentNode;
 
-	public void SelectNode( INode node )
-	{
-		if ( node is not null && FindNode( node ) is { } panel )
-			SelectNode( panel );
-	}
-
 	/// <summary>
 	/// Each input <paramref name="node"/> feeds, with the output feeding it.
 	/// </summary>
