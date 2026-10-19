@@ -21,6 +21,7 @@ public sealed class PreviewPanel : Panel
 	const string BoxModel = "models/dev/box.vmdl";
 	const string PlaneModel = "models/dev/plane.vmdl";
 	const string GridCookie = "shadergraphplus.preview.grid";
+	const string LightCookie = "shadergraphplus.preview.light";
 
 	/// <summary>
 	/// What the preview model is. The built-ins light up their toolbar button; anything picked from
@@ -49,6 +50,8 @@ public sealed class PreviewPanel : Panel
 	readonly GameObject _modelObject;
 	readonly ModelRenderer _modelRenderer;
 	readonly Panel _gridButton;
+	readonly Panel _lightButton;
+	readonly GameObject _light;
 	readonly Dictionary<Primitive, Panel> _modelButtons = new();
 	readonly Label _playIcon;
 	readonly Label _speedText;
@@ -74,6 +77,21 @@ public sealed class PreviewPanel : Panel
 	}
 
 	bool _showGrid;
+
+	/// <summary>
+	/// Light the model with the preview's sun. Off leaves only the ambient light, to check emission
+	/// or how a material reads unlit. Remembered between sessions.
+	/// </summary>
+	public bool ShowLight
+	{
+		get => _light.Enabled;
+		set
+		{
+			_light.Enabled = value;
+			_lightButton.SetClass( "on", value );
+			EditorCookie.Set( LightCookie, value );
+		}
+	}
 
 	/// <summary>
 	/// The model being previewed. Null goes back to the default box, where the Qt preview goes back
@@ -152,10 +170,10 @@ public sealed class PreviewPanel : Panel
 		using ( _previewScene.Push() )
 		{
 			// Lit renderers need a light to be seen
-			var light = _previewScene.CreateObject();
-			light.Name = "Preview Light";
-			light.WorldRotation = Rotation.From( 50, 30, 0 );
-			light.Components.Create<DirectionalLight>().LightColor = Color.White * 1.5f;
+			_light = _previewScene.CreateObject();
+			_light.Name = "Preview Light";
+			_light.WorldRotation = Rotation.From( 50, 30, 0 );
+			_light.Components.Create<DirectionalLight>().LightColor = Color.White * 1.5f;
 
 			_modelObject = _previewScene.CreateObject();
 			_modelObject.Name = "Preview Model";
@@ -192,6 +210,9 @@ public sealed class PreviewPanel : Panel
 
 		bar.Add.Panel( "spacer" );
 
+		_lightButton = AddButton( bar, "lightbulb", "Preview light" );
+		_lightButton.AddEventListener( "onclick", () => ShowLight = !ShowLight );
+
 		_gridButton = AddButton( bar, "grid_on", "Show grid" );
 		_gridButton.AddEventListener( "onclick", () => ShowGrid = !ShowGrid );
 
@@ -204,6 +225,7 @@ public sealed class PreviewPanel : Panel
 		Paused = false;
 		TimeScale = 1.0f;
 		ShowGrid = EditorCookie.Get( GridCookie, true );
+		ShowLight = EditorCookie.Get( LightCookie, true );
 	}
 
 	/// <summary>
