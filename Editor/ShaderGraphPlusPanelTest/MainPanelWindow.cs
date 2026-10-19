@@ -184,7 +184,18 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		ConsolePanel.Hook();
 
-		_graphView = new ShaderGraphPlusViewPanel { Graph = _graph };
+		_blackboard = new BlackboardPanel( IsSubgraph );
+		_blackboard.Graph = _graph;
+		_blackboard.OnDirty += ( evaluate ) => SetDirty( evaluate );
+		_blackboard.OnParameterNodesDeleted += () =>
+		{
+			_graphView.RebuildFromGraph();
+		};
+
+		//_blackboard.OnSelected = parameter => _properties.Target = (object)parameter ?? _graph;
+
+		_graphView = new ShaderGraphPlusViewPanel( _blackboard );
+		_graphView.Graph = _graph;
 		_graphView.SelectionChanged += () =>
 		{
 			// Nothing, or several, selected shows the graph, like the Qt editor
@@ -192,12 +203,6 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 			_properties.Target = selected.Length == 1 ? (object)selected[0].Node : _graph;
 		};
 		_palette = new PalettePanel( IsSubgraph );
-
-		_blackboard = new BlackboardPanel( IsSubgraph );
-		_blackboard.Graph = _graph;
-		_blackboard.OnDirty += ( evaluate ) => SetDirty( evaluate );
-		_graphView.Blackboard = _blackboard;
-		//_blackboard.OnSelected = parameter => _properties.Target = (object)parameter ?? _graph;
 
 		_properties = new PropertiesPanel();
 		_properties.Target = _graph;

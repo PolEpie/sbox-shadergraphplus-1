@@ -1,4 +1,4 @@
-using Editor.NodeEditor;
+using EngineNodeGraph;
 using NodeEditorPlus;
 using NodeEditorPlusTest;
 using Sandbox.Internal;
@@ -8,9 +8,14 @@ using ShaderGraphPlus.Nodes;
 
 namespace ShaderGraphPlusPanelTest;
 
-
-public sealed class ShaderGraphPlusViewPanel : GraphViewPanel
+public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 {
+	/// <summary>
+	/// Most results a filtered node list shows, like the Qt editor's.
+	/// </summary>
+	const int MaxFilteredResults = 20;
+
+
 	public new ShaderGraphPlus.ShaderGraphPlus Graph
 	{
 		get => (ShaderGraphPlus.ShaderGraphPlus)base.Graph;
@@ -23,7 +28,7 @@ public sealed class ShaderGraphPlusViewPanel : GraphViewPanel
 	}
 
 	private readonly Dictionary<string, INodeType> AvailableNodes = new( StringComparer.OrdinalIgnoreCase );
-	private readonly Dictionary<string, IBlackboardParameterType> AvailableParameters = new( StringComparer.OrdinalIgnoreCase );
+
 
 	protected override INodeType CommentNodeType { get; } = new ClassNodeType( EditorTypeLibrary.GetType<CommentNode>() );
 
@@ -39,117 +44,34 @@ public sealed class ShaderGraphPlusViewPanel : GraphViewPanel
 	/// </summary>
 	protected override bool CanCopy( EngineNodeGraph.NodePanel node ) => base.CanCopy( node ) && node.Node is not IBlackboardNode;
 
-	/// <summary>
-	/// Where converted constants get their parameters. Set by the window.
-	/// </summary>
-	public BlackboardPanel Blackboard { get; set; }
-
-	public ShaderGraphPlusViewPanel() : base()
+	public ShaderGraphPlusViewPanel( BlackboardPanel blackboard ) : base()
 	{
 		SGPLogger.Info( $"TODO : ShaderGraphPlusViewPanel Constructor" );
+
+		AddClass( ShaderGraphPlusCssClasses.EditorDockPane );
+		AddClass( "sg-graph" );
+
+
+		_blackboard = blackboard;
+
+		// Derived initializers have run, so an overridden CommentNodeType is already set
+		if ( CommentNodeType is not null ) CommentFactory = CreateCommentNode;
+
+		PlugDroppedOnEmpty += BuildConnectionDropContextMenu;
 	}
 
-	protected override void BuildContextMenu( Sandbox.UI.Menu menu, EngineNodeGraph.NodePanel node, Vector2 position )
+	EngineNodeGraph.ICommentNode CreateCommentNode() => CommentNodeType.CreateNode( Graph ) as EngineNodeGraph.ICommentNode;
+
+	public void SelectNode( INode node )
 	{
-		base.BuildContextMenu( menu, node, position );
-
-		if ( node is null || Blackboard is null || Graph is null ) return;
-
-		var selected = SelectedNodes.Select( x => x.Node ).ToArray();
-		var constants = selected.OfType<IConstantNode>().Where( x => x is not IConstantMatrixNode ).ToArray();
-		if ( constants.Length == 0 || constants.Length != selected.Length ) return;
-
-		var target = Graph.IsSubgraph ? "Subgraph Input" : "Material Parameter";
-		var name = constants.Length == 1 ? $"Convert Constant to {target}" : $"Convert {constants.Length} Constants to {target}s";
-
-		if ( menu.HasOptions ) menu.AddSeparator();
-		menu.AddOption( name, "swap_horiz", () => ConvertConstants( constants ) );
-	}
-
-	void ConvertConstants( IReadOnlyList<IConstantNode> constants )
-	{
-		BaseNodePlus last = null;
-
-		foreach ( var constant in constants )
-		{
-			last = ConvertConstantToParameter( constant );
-		}
-
-		RebuildFromGraph();
-		Blackboard.RebuildFromGraph();
-
-		if ( last is not null && FindNode( last ) is { } panel ) SelectNode( panel );
-	}
-
-	/// <summary>
-	/// Swap <paramref name="constant"/> for a node of a new parameter holding its value, keeping its
-	/// connections. Returns the new node, or the constant when there's no parameter type for it.
-	/// </summary>
-	BaseNodePlus ConvertConstantToParameter( IConstantNode constant )
-	{
-		var baseNode = (BaseNodePlus)constant;
-		var position = baseNode.Position;
-		var connected = Graph.IsSubgraph ? new Dictionary<IPlugIn, IPlugOut>() : ConnectedFrom( baseNode );
-
-		var parameterTypeName = Graph.IsSubgraph
-			? constant switch
-			{
-				BoolConstantNode => DisplayInfo.ForType( typeof( BoolSubgraphInputParameter ) ).Fullname,
-				IntConstantNode => DisplayInfo.ForType( typeof( IntSubgraphInputParameter ) ).Fullname,
-				FloatConstantNode => DisplayInfo.ForType( typeof( FloatSubgraphInputParameter ) ).Fullname,
-				Float2ConstantNode => DisplayInfo.ForType( typeof( Float2SubgraphInputParameter ) ).Fullname,
-				Float3ConstantNode => DisplayInfo.ForType( typeof( Float3SubgraphInputParameter ) ).Fullname,
-				Float4ConstantNode => DisplayInfo.ForType( typeof( Float4SubgraphInputParameter ) ).Fullname,
-				ColorConstantNode => DisplayInfo.ForType( typeof( ColorSubgraphInputParameter ) ).Fullname,
-				_ => null,
-			}
-			: constant switch
-			{
-				BoolConstantNode => DisplayInfo.ForType( typeof( BoolParameter ) ).Fullname,
-				IntConstantNode => DisplayInfo.ForType( typeof( IntParameter ) ).Fullname,
-				FloatConstantNode => DisplayInfo.ForType( typeof( FloatParameter ) ).Fullname,
-				Float2ConstantNode => DisplayInfo.ForType( typeof( Float2Parameter ) ).Fullname,
-				Float3ConstantNode => DisplayInfo.ForType( typeof( Float3Parameter ) ).Fullname,
-				Float4ConstantNode => DisplayInfo.ForType( typeof( Float4Parameter ) ).Fullname,
-				ColorConstantNode => DisplayInfo.ForType( typeof( ColorParameter ) ).Fullname,
-				_ => null,
-			};
-
-		if ( parameterTypeName is null || !AvailableParameters.TryGetValue( parameterTypeName, out var parameterType ) )
-		{
-			SGPLogger.Warning( $"No parameter type for {constant.GetType().Name}" );
-			return baseNode;
-		}
-
-		Graph.RemoveNode( baseNode );
-
-		var parameter = Blackboard.CreateNewParameter( parameterType );
-		parameter.SetValue( constant.GetValue() );
-
-		var parameterNode = (BaseNodePlus)parameter.ToNode();
-		parameterNode.Graph = Graph;
-		parameterNode.Position = position.SnapToGrid( GridSize );
-		Graph.AddNode( parameterNode );
-
-		// Whatever the constant fed, the parameter feeds now
-		foreach ( var node in Graph.Nodes )
-		{
-			foreach ( var input in node.Inputs )
-			{
-				if ( input.ConnectedOutput is null && connected.TryGetValue( input, out var output ) )
-				{
-					node.ConnectNode( input.Identifier, output.Identifier, parameterNode.Identifier );
-				}
-			}
-		}
-
-		return parameterNode;
+		if ( node is not null && FindNode( node ) is { } panel )
+			SelectNode( panel );
 	}
 
 	/// <summary>
 	/// Each input <paramref name="node"/> feeds, with the output feeding it.
 	/// </summary>
-	Dictionary<IPlugIn, IPlugOut> ConnectedFrom( BaseNodePlus node )
+	private Dictionary<IPlugIn, IPlugOut> ConnectedFrom( BaseNodePlus node )
 	{
 		var connected = new Dictionary<IPlugIn, IPlugOut>();
 
@@ -221,18 +143,6 @@ public sealed class ShaderGraphPlusViewPanel : GraphViewPanel
 			}
 			return true;
 		} );
-	}
-
-	public void AddParameterType<T>() where T : BlackboardParameter
-	{
-		AddParameterType( EditorTypeLibrary.GetType<T>() );
-	}
-
-	public void AddParameterType( TypeDescription type )
-	{
-		var parameterType = ClassBlackboardParameterType.HookupParameterType( type );
-
-		AvailableParameters.TryAdd( parameterType.Identifier, parameterType );
 	}
 
 	protected override EngineNodeGraph.NodeHandleConfig OnGetHandleConfig( Type type )
