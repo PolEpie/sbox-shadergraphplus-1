@@ -1,4 +1,5 @@
 using Editor.NodeEditor;
+using NodeEditorPlus;
 using NodeEditorPlusTest;
 using Sandbox.Internal;
 using Sandbox.UI;
@@ -75,6 +76,22 @@ public sealed class ShaderGraphPlusViewPanel : GraphViewPanel
 	public INodeType FindNodeType( Type type )
 	{
 		return AvailableNodes.TryGetValue( type.FullName!, out var nodeType ) ? nodeType : null;
+	}
+
+	protected override IEnumerable<INodeType> GetRelevantNodes( NodeQuery query )
+	{
+		return AvailableNodes.Values.Filter( query ).Where( x =>
+		{
+			if ( x is ClassNodeType classNodeType )
+			{
+				var targetType = classNodeType.Type.TargetType;
+				if ( classNodeType.Type.HasAttribute<HideAttribute>() ) return false;
+				if ( classNodeType.Type.HasAttribute<InternalNodeAttribute>() ) return false;
+				if ( Graph.IsSubgraph && targetType == typeof( Result ) ) return false;
+				if ( targetType == typeof( SubgraphNode ) && classNodeType.DisplayInfo.Name == targetType.Name.ToTitleCase() ) return false;
+			}
+			return true;
+		} );
 	}
 
 	public void AddParameterType<T>() where T : BlackboardParameter
