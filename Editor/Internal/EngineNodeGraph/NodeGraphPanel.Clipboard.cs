@@ -43,20 +43,26 @@ public partial class NodeGraphPanel
 		return $"{ClipboardIdent}:{Convert.ToBase64String( ms.ToArray() )}";
 	}
 
-	public void CopySelection()
+	/// <summary>
+	/// Put the selection on the clipboard. False when nothing in it can be copied.
+	/// </summary>
+	public bool CopySelection()
 	{
-		if ( SerializeSelection() is { } text ) Sandbox.UI.Clipboard.SetText( text );
+		if ( SerializeSelection() is not { } text ) return false;
+
+		Sandbox.UI.Clipboard.SetText( text );
+		return true;
 	}
 
 	/// <summary>
-	/// Copy the selection, then remove what was copied.
+	/// Copy the selection, then remove what was copied. False when nothing in it can be copied.
 	/// </summary>
-	public void CutSelection()
+	public bool CutSelection()
 	{
-		if ( SerializeSelection() is not { } text ) return;
+		if ( !CopySelection() ) return false;
 
-		Sandbox.UI.Clipboard.SetText( text );
 		RemoveCopyable();
+		return true;
 	}
 
 	/// <summary>
@@ -143,16 +149,29 @@ public partial class NodeGraphPanel
 		SelectionChanged?.Invoke();
 	}
 
-	public override string GetClipboardValue( bool cut )
+	/// <summary>
+	/// Copy, cut and paste travel up from the focused panel, and at every level the default handling
+	/// also forwards to the parent - so take them here, once, as they pass the graph. A text field
+	/// keeps its own.
+	/// </summary>
+	protected override void OnEvent( PanelEvent e )
 	{
-		if ( SerializeSelection() is not { } text ) return base.GetClipboardValue( cut );
+		// Consumed: the default handling would only repeat it, or overwrite what was copied
+		if ( (e is CopyEvent or CutEvent or PasteEvent) && !FromTextEntry( e ) && HandleClipboard( e ) )
+		{
+			e.StopPropagation();
+			return;
+		}
 
-		if ( cut ) RemoveCopyable();
-		return text;
+		base.OnEvent( e );
 	}
 
-	public override void OnPaste( string text )
+	bool HandleClipboard( PanelEvent e ) => e switch
 	{
-		if ( !Paste( text ) ) base.OnPaste( text );
-	}
+		PasteEvent paste => Paste( paste.ClipboardValue ),
+		CutEvent => CutSelection(),
+		_ => CopySelection(),
+	};
+
+	static bool FromTextEntry( PanelEvent e ) => e.Target?.AncestorsAndSelf.Any( x => x is TextEntry ) == true;
 }

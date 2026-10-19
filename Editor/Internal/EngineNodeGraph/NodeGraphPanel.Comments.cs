@@ -163,8 +163,8 @@ public partial class NodeGraphPanel
 
 		if ( SerializeSelection() is not null )
 		{
-			menu.AddOption( "Copy", "content_copy", CopySelection );
-			menu.AddOption( "Cut", "content_cut", CutSelection );
+			menu.AddOption( "Copy", "content_copy", () => CopySelection() );
+			menu.AddOption( "Cut", "content_cut", () => CutSelection() );
 			menu.AddOption( "Duplicate", "file_copy", DuplicateSelection );
 
 			if ( CommentFactory is not null || FindComment( node ) is not null ) menu.AddSeparator();
