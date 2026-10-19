@@ -87,8 +87,12 @@ public static class ShaderGraphPlusStyleSheets
 		.sg-list .item { height: 26px; align-items: center; gap: 8px; padding: 0px 14px; }
 		.sg-list .item > .icon { font-size: 15px; color: #8a8f98; }
 		
-		.sg-preview { flex-grow: 1; align-items: center; justify-content: center; background-color: #121317; }
-		.sg-preview > .ball { width: 160px; height: 160px; border-radius: 80px; background-color: #d9773a; }
+		.sg-preview { position: relative; flex-grow: 1; min-width: 0px; min-height: 0px; pointer-events: all; overflow: hidden; background-color: #121317; }
+		.sg-preview > .scene { position: absolute; left: 0px; top: 0px; width: 100%; height: 100%; }
+		.sg-preview > .overlay { position: absolute; left: 0px; top: 0px; right: 0px; padding: 8px 10px; flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; }
+		.sg-preview .hint { color: #8a8f98; }
+		.sg-preview .iconbutton { flex-shrink: 0; width: 24px; height: 24px; color: #6e737c; }
+		.sg-preview .iconbutton.active { color: #4c86f0; }
 		
 		.sg-props { flex-direction: column; flex-grow: 1; }
 		.sg-props > .heading { flex-direction: column; flex-shrink: 0; gap: 4px; padding: 10px 12px; border-bottom: 1px solid #26282e; }
