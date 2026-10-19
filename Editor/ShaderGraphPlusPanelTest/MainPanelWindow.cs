@@ -196,6 +196,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		_blackboard = new BlackboardPanel( IsSubgraph );
 		_blackboard.Graph = _graph;
 		_blackboard.OnDirty += ( evaluate ) => SetDirty( evaluate );
+		_graphView.Blackboard = _blackboard;
 		//_blackboard.OnSelected = parameter => _properties.Target = (object)parameter ?? _graph;
 
 		_properties = new PropertiesPanel();
