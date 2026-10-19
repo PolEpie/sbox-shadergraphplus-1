@@ -68,6 +68,32 @@ public static partial class ShaderTemplate
 	};
 
 	/// <summary>
+	/// Everything a graph's ShaderType can be set to: the built-in names, then the project's shader
+	/// template assets by path, with the title and icon each template declares.
+	/// </summary>
+	internal static IEnumerable<(string Value, string Label, string Icon)> GetShaderTypeChoices()
+	{
+		foreach ( var builtIn in BuiltInTemplateEntries.Values )
+		{
+			yield return (builtIn.Name, builtIn.Name, builtIn.Icon);
+		}
+
+		var extension = $".{ShaderGraphPlusGlobals.ShaderTemplateAssetTypeExtension}";
+		var templates = Editor.AssetSystem.All.Where( x => !x.Path.StartsWith( "shadertemplates/examples" ) && x.Path.EndsWith( extension, StringComparison.OrdinalIgnoreCase ) );
+
+		foreach ( var asset in templates )
+		{
+			var template = new ShaderTemplateResource();
+			template.Deserialize( Editor.FileSystem.Content.ReadAllText( asset.Path ) );
+
+			var label = string.IsNullOrWhiteSpace( template.Title ) ? asset.Name : template.Title;
+			var icon = string.IsNullOrWhiteSpace( template.Icon ) ? "view_in_ar" : template.Icon;
+
+			yield return (asset.Path, label, icon);
+		}
+	}
+
+	/// <summary>
 	/// Convert the user defined template code to a formatable string that can be used by <seealso cref="string.Format(string, ReadOnlySpan{object?})"/>
 	/// </summary>
 	/// <returns>A formatable string</returns>

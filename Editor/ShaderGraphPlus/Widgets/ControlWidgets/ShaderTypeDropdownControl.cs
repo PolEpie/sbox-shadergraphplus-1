@@ -81,46 +81,7 @@ internal sealed class ShaderTypeDropdownControl : DropdownControlWidget<string>
 
 	protected override IEnumerable<object> GetDropdownValues()
 	{
-		var templates = AssetSystem.All.Where( x => !x.Path.StartsWith( "shadertemplates/examples" ) && x.Path.EndsWith( $".{ShaderGraphPlusGlobals.ShaderTemplateAssetTypeExtension}", StringComparison.OrdinalIgnoreCase ) );
-
-		List<ShaderTemplate.TemplateEntry> entries = ShaderTemplate.BuiltInTemplateEntries.Values.ToList();
-
-		entries.AddRange( templates.Select( x => new ShaderTemplate.TemplateEntry( x.Name, x.Path, "view_in_ar" ) ) );
-
-		foreach ( var templateEntry in entries )
-		{
-			var label = templateEntry.Name;
-			var icon = templateEntry.Icon;
-
-			var isUserTemplate = !string.IsNullOrWhiteSpace( templateEntry.Path ) && templateEntry.Path.EndsWith( $".{ShaderGraphPlusGlobals.ShaderTemplateAssetTypeExtension}" );
-
-			if ( isUserTemplate )
-			{
-				var templateTxt = Editor.FileSystem.Content.ReadAllText( templateEntry.Path );
-				var template = new ShaderTemplateResource();
-
-				template.Deserialize( templateTxt );
-
-				if ( !string.IsNullOrWhiteSpace( template.Title ) )
-				{
-					label = template.Title;
-				}
-
-				if ( !string.IsNullOrWhiteSpace( template.Icon ) )
-				{
-					icon = template.Icon;
-				}
-			}
-
-			var entry = new Entry()
-			{
-				Value = !isUserTemplate ? templateEntry.Name : templateEntry.Path,
-				Label = label,
-				Icon = icon
-			};
-
-			yield return entry;
-		}
+		return ShaderTemplate.GetShaderTypeChoices().Select( x => (object)new Entry { Value = x.Value, Label = x.Label, Icon = x.Icon } );
 	}
 
 	protected override void PaintControl()
