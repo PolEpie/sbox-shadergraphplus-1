@@ -109,6 +109,12 @@ public partial class NodeGraphPanel : CanvasPanel
 	public Color BorderColor { get; set; } = NodeTheme.Hairline;
 
 	/// <summary>
+	/// Outline and glow of a <see cref="NodePanel.Highlighted"/> node. Apart from the selection's, so
+	/// both read at once.
+	/// </summary>
+	public Color HighlightColor { get; set; } = Color.Parse( "#F5B942" ).Value;
+
+	/// <summary>
 	/// Centre the view on <paramref name="center"/> at <paramref name="zoom"/>.
 	/// </summary>
 	public void SetView( Vector2 center, float zoom )
@@ -256,6 +262,15 @@ public partial class NodeGraphPanel : CanvasPanel
 		DeselectConnections();
 		foreach ( var other in _nodes ) other.Selected = other == node;
 		SelectionChanged?.Invoke();
+	}
+
+	/// <summary>
+	/// Make the panel showing <paramref name="node"/> the only selection. Does nothing if it isn't shown.
+	/// </summary>
+	public void SelectNode( INode node )
+	{
+		if ( node is not null && FindNode( node ) is { } panel )
+			SelectNode( panel );
 	}
 
 	public void SelectAll()

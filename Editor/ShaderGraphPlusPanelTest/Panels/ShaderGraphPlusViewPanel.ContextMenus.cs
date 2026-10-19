@@ -26,7 +26,7 @@ public sealed partial class ShaderGraphPlusViewPanel
 			RebuildFromGraph();
 			_blackboard.RebuildFromGraph();
 
-			if ( last is not null && FindNode( last ) is { } panel ) SelectNode( panel );
+			SelectNode( last );
 		}
 
 		if ( _blackboard is null || Graph is null )

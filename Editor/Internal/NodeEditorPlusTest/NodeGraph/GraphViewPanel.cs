@@ -108,24 +108,34 @@ public class GraphViewPanel : NodeGraphPanel
 		return null;
 	}
 
+	/// <summary>
+	/// Whether a drag from <paramref name="source"/> drops nodes here. Palette rows do.
+	/// </summary>
+	protected virtual bool AcceptsDrag( Panel source ) => source is TreeRow { UserData: DisplayInfo };
+
+	/// <summary>
+	/// A new node for what <paramref name="e"/> drags, not in the graph yet: the palette's node type
+	/// by default. Null when there's nothing to drop.
+	/// </summary>
+	protected virtual INode CreateDroppedNode( PanelEvent e )
+	{
+		return Graph is not null && NodeTypeFromPanelEvent( e ) is { } type ? type.CreateNode( Graph ) as INode : null;
+	}
+
 	protected override void OnDragEnter( PanelEvent e )
 	{
 		base.OnDragEnter( e );
 
-		if ( e.Target is TreeRow { UserData: DisplayInfo } )
+		if ( AcceptsDrag( e.Target ) )
 		{
 			_dragDepth++;
 
-			// Also fires over placed cards, so keep the existing preview
-			if ( _dropPreview == null && Graph is INodeGraph graph && NodeTypeFromPanelEvent( e ) is { } type )
+			// Also fires over placed cards, so keep the existing preview. It's a throwaway node, never added to the graph.
+			if ( _dropPreview == null && CreateDroppedNode( e ) is { } node )
 			{
-				// A throwaway node of the dragged type, never added to the graph
-				if ( type.CreateNode( graph ) is INode node )
-				{
-					node.Position = ScreenToCanvas( MousePosition ).SnapToGrid( GridSize );
+				node.Position = ScreenToCanvas( MousePosition ).SnapToGrid( GridSize );
 
-					_dropPreview = CreatePreview( node );
-				}
+				_dropPreview = CreatePreview( node );
 			}
 		}
 	}
@@ -149,7 +159,7 @@ public class GraphViewPanel : NodeGraphPanel
 			return;
 		}
 
-		if ( e.Target is TreeRow { UserData: DisplayInfo } )
+		if ( AcceptsDrag( e.Target ) )
 		{
 			_dragDepth = Math.Max( 0, _dragDepth - 1 );
 		}
@@ -173,12 +183,13 @@ public class GraphViewPanel : NodeGraphPanel
 			ClearDropPreview();
 		}
 
-		if ( NodeTypeFromPanelEvent( e ) is not { } type )
+		if ( CreateDroppedNode( e ) is not { } node )
 		{
 			return;
 		}
 
-		CreateNewNode( type, ScreenToCanvas( MousePosition ) );
+		node.Position = ScreenToCanvas( MousePosition );
+		AddNode( node );
 
 		e.StopPropagation();
 

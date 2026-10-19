@@ -44,6 +44,20 @@ public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 	/// </summary>
 	protected override bool CanCopy( EngineNodeGraph.NodePanel node ) => base.CanCopy( node ) && node.Node is not IBlackboardNode;
 
+	/// <summary>
+	/// Blackboard parameters drag in as nodes too.
+	/// </summary>
+	protected override bool AcceptsDrag( Panel source ) => source is ParameterRow || base.AcceptsDrag( source );
+
+	protected override EngineNodeGraph.INode CreateDroppedNode( PanelEvent e )
+	{
+		if ( e.Target is not ParameterRow row ) return base.CreateDroppedNode( e );
+
+		var node = (BaseNodePlus)row.Parameter.ToNode();
+		node.Graph = Graph;
+		return node;
+	}
+
 	public ShaderGraphPlusViewPanel( BlackboardPanel blackboard ) : base()
 	{
 		SGPLogger.Info( $"TODO : ShaderGraphPlusViewPanel Constructor" );
@@ -53,6 +67,8 @@ public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 
 
 		_blackboard = blackboard;
+		_blackboard.OnSelected += OnParameterSelected;
+		SelectionChanged += OnGraphSelectionChanged;
 
 		// Derived initializers have run, so an overridden CommentNodeType is already set
 		if ( CommentNodeType is not null ) CommentFactory = CreateCommentNode;
@@ -60,13 +76,27 @@ public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 		PlugDroppedOnEmpty += BuildConnectionDropContextMenu;
 	}
 
-	EngineNodeGraph.ICommentNode CreateCommentNode() => CommentNodeType.CreateNode( Graph ) as EngineNodeGraph.ICommentNode;
+	bool _pickingParameter;
 
-	public void SelectNode( INode node )
+	/// <summary>
+	/// Picking a parameter takes the selection from the graph, so the next click there - on a node
+	/// or empty space - changes it and ends the highlight.
+	/// </summary>
+	void OnParameterSelected( BlackboardParameter parameter )
 	{
-		if ( node is not null && FindNode( node ) is { } panel )
-			SelectNode( panel );
+		if ( parameter is null ) return;
+
+		_pickingParameter = true;
+		ClearSelection();
+		_pickingParameter = false;
 	}
+
+	void OnGraphSelectionChanged()
+	{
+		if ( !_pickingParameter ) _blackboard?.Select( null );
+	}
+
+	EngineNodeGraph.ICommentNode CreateCommentNode() => CommentNodeType.CreateNode( Graph ) as EngineNodeGraph.ICommentNode;
 
 	/// <summary>
 	/// Each input <paramref name="node"/> feeds, with the output feeding it.
@@ -87,11 +117,14 @@ public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 	}
 
 	/// <summary>
-	/// Nodes refresh their plugs in OnFrame, which the Qt view calls every frame too.
+	/// Nodes refresh their plugs in OnFrame, which the Qt view calls every frame too. Nodes reading
+	/// the parameter picked in the blackboard are highlighted, so they're easy to spot.
 	/// </summary>
 	public override void Tick()
 	{
 		base.Tick();
+
+		var parameter = _blackboard?.Selected?.Identifier;
 
 		foreach ( var node in Nodes )
 		{
@@ -99,6 +132,8 @@ public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 			{
 				baseNode.OnFrame();
 			}
+
+			node.Highlighted = parameter is { } id && node.Node is IBlackboardNode blackboardNode && blackboardNode.ParameterIdentifier == id;
 		}
 	}
 
