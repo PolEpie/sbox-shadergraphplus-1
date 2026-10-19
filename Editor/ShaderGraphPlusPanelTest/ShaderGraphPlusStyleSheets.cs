@@ -102,13 +102,14 @@ public static class ShaderGraphPlusStyleSheets
 		.sg-props > .body > .empty { padding: 12px; color: #6e737c; font-size: 11px; text-align: center; }
 		.sg-props .controlgroup { padding: 0px; border-radius: 0px; }
 		.sg-props .controlgroup > .body { gap: 2px; }
-		.sg-props .controlgroup > .header { flex-shrink: 0; margin-top: 10px; padding: 0px 2px 2px 0px; color: #c4c8cf; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; text-shadow: none; }
-		.sg-props GenericControl .controlgroup > .header, .sg-props GenericControl > .title { margin-top: 6px; color: #8a8f98; font-weight: 600; text-transform: none; letter-spacing: 0px; }
+		.sg-props GenericControl > .title { margin-top: 6px; color: #8a8f98; font-weight: 600; }
 		.sg-props ControlSheetRow.wide { align-items: stretch; }
 		.sg-props ControlSheet { font-size: 12px; }
 		.sg-props ControlSheetRow { align-items: center; min-height: 28px; }
 		.sg-props ControlSheetRow > .left { width: 110px; padding: 4px 6px; }
-		.sg-props ControlSheetRow > .left > .title { width: 98px; font-size: 12px; color: #b4b9c2; text-overflow: ellipsis; }
+		.sg-props ControlSheetRow > .left > .title { font-size: 12px; color: #b4b9c2; }
+		.sg-props ControlSheetGroupHeader > .lead { width: 104px; }
+		.sg-props ControlSheetGroupHeader.has-toggle > .lead { width: 76px; }
 		.sg-props .pin { height: 26px; align-items: center; gap: 8px; padding: 0px 12px; }
 	";
 }
