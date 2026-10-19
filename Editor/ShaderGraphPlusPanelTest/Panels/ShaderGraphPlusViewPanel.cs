@@ -49,9 +49,6 @@ public sealed class ShaderGraphPlusViewPanel : GraphViewPanel
 		SGPLogger.Info( $"TODO : ShaderGraphPlusViewPanel Constructor" );
 	}
 
-	/// <summary>
-	/// Selected constants also offer to become parameters, like the Qt editor.
-	/// </summary>
 	protected override void BuildContextMenu( Sandbox.UI.Menu menu, EngineNodeGraph.NodePanel node, Vector2 position )
 	{
 		base.BuildContextMenu( menu, node, position );
