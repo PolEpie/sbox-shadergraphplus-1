@@ -226,7 +226,9 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		_properties = new PropertiesPanel();
 		_properties.Target = _graph;
 		_properties.PropertyUpdated += OnPropertyUpdated;
+		
 		_preview = new PreviewPanel();
+		_preview.OnModelChanged = ( model ) => _graph.Model = model?.Name;
 
 		var nodeTypes = EditorTypeLibrary.GetTypes<ShaderNodePlus>()
 			.Where( x => !x.IsAbstract && !x.HasAttribute<HideAttribute>() ).OrderBy( x => x.Name );
@@ -377,8 +379,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		_dynamicComboIntAttributes.Clear();
 		_shaderFeatures.Clear();
 
-		// TODO
-		//_preview?.ClearAttributes();
+		_preview?.ClearAllAttributes();
 	}
 
 	public void Open()

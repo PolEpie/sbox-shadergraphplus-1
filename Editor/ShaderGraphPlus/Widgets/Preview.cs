@@ -713,7 +713,6 @@ public sealed class Preview : SceneRenderingWidget
 		_postProcessCmdList.Blit( _material, _sceneObject.Attributes );
 	}
 
-
 	private Material _material;
 	public Material Material
 	{
