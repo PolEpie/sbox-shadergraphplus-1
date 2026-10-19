@@ -10,8 +10,9 @@ using static ShaderGraphPlus.ShaderGraphPlusGlobals;
 namespace ShaderGraphPlusPanelTest;
 
 /// <summary>
-/// The graph's parameters in a list, one row each: type in its type color, name, default value,
-/// and tags for the settings worth seeing at a glance (sRGB, attribute, range...).
+/// The graph's parameters, grouped: a header per group, then its parameters one row each - type in its type color,
+/// name, default value, and tags for the settings worth seeing at a glance (sRGB, attribute, range...).
+/// Parameters and groups reorder by dragging, and parameters rename in place.
 /// </summary>
 public sealed class BlackboardPanel : Panel
 {
@@ -25,6 +26,16 @@ public sealed class BlackboardPanel : Panel
 
 	private readonly HashSet<string> _collapsedGroups;
 	private string CollapsedGroupsCookie => EditorCookieNames.ShaderGraphPlusBlackboardCollapsedGroupsCookie;
+
+	private readonly List<ParameterRow> _rowPanels = [];
+	private readonly List<ParameterGroupHeader> _headers = [];
+
+	private Sandbox.UI.Menu _menu;
+	private BlackboardItem _dragSource;
+
+	// Drops, menus and graph edits change what the list should show from inside an event of a panel the
+	// rebuild would delete, so the rebuild waits for the next tick
+	private bool _rebuildPending;
 
 	/// <summary>
 	/// The currently selected parameter.
@@ -64,15 +75,20 @@ public sealed class BlackboardPanel : Panel
 		AddClass( ShaderGraphPlusCssClasses.EditorDockPane );
 		AddClass( "sg-blackboard" );
 
+		// For F2 and Delete: a click anywhere in the blackboard lands the focus here
+		AcceptsFocus = true;
+
 		BuildToolbar();
 
 		_list = Add.Panel( "sg-params" );
 
 		// Pressing empty space clears the selection
-		_list.AddEventListener( "onmousedown", e =>
-		{
-			if ( e.Target == _list ) Select( null );
-		} );
+		_list.AddEventListener( "onmousedown", OnListMouseDown );
+	}
+
+	private void OnListMouseDown( PanelEvent e )
+	{
+		if ( e.Target == _list ) Select( null );
 	}
 
 	private void BuildToolbar()
@@ -81,15 +97,17 @@ public sealed class BlackboardPanel : Panel
 		toolbar.AddClass( "panetools" );
 
 		_searchFilter = toolbar.AddChild( new TextInput( "Filter..", "search" ) );
-		_searchFilter.OnChange = value =>
-		{
-			_filter = value?.Trim() ?? "";
-			BuildFromParameters( Graph.Parameters );
-		};
+		_searchFilter.OnChange = OnFilterChanged;
 
 		var addMenu = new Sandbox.UI.Menu();
-		addMenu.AboutToShow += AddParameterOptions;
+		addMenu.AboutToShow += OnAddMenuAboutToShow;
 		toolbar.AddMenu( "", "add", addMenu ).Tooltip = "Add parameter";
+	}
+
+	private void OnFilterChanged( string value )
+	{
+		_filter = value?.Trim() ?? "";
+		RebuildFromGraph();
 	}
 
 	public void AddParameterType<T>() where T : BlackboardParameter
@@ -112,9 +130,6 @@ public sealed class BlackboardPanel : Panel
 		_filter = "";
 		ExpandGroup( group );
 
-		// TODO
-		//using var undoScope = UndoScope( "Add Parameter" );
-
 		var parameter = (BlackboardParameter)type.CreateParameter( Graph );
 
 		if ( parameter is IGroupableBlackboardParameter groupable )
@@ -128,9 +143,9 @@ public sealed class BlackboardPanel : Panel
 
 		OnDirty?.Invoke( true );
 
-		//_window.OnParameterSelected( parameter );
+		Reselect( parameter );
 
-		RebuildFromGraph( true );
+		QueueRebuild();
 	}
 
 	public IBlackboardParameter CreateNewParameter( IBlackboardParameterType type, string name = "", Action onCreated = null )
@@ -163,30 +178,61 @@ public sealed class BlackboardPanel : Panel
 		return parameter;
 	}
 
-	private void AddParameterOptions( Sandbox.UI.Menu menu )
+	/// <summary>
+	/// The toolbar's + menu, rebuilt every time it opens: parameter types, then the same again per existing group.
+	/// </summary>
+	private void OnAddMenuAboutToShow( Sandbox.UI.Menu menu )
 	{
-		void AddOption( Sandbox.UI.Menu menu, IBlackboardParameterType parameterType, string icon, string description )
-		{
-			var option = menu.AddOption( parameterType.Type.Title, !string.IsNullOrWhiteSpace( icon ) ? icon : null, () =>
-			{
-				CreateNewParameter( parameterType, "" );//, group );
-			} );
-
-			option.Tooltip = description;
-		}
-
 		menu.Clear();
 
 		if ( Graph is null )
 			return;
 
+		AddParameterOptions( menu, "" );
+		AddGroupedOptions( menu );
+	}
+
+	/// <summary>
+	/// "Add to Group": one submenu per existing group, each offering every parameter type.
+	/// </summary>
+	private void AddGroupedOptions( Sandbox.UI.Menu menu )
+	{
+		var groups = ExistingGroups().ToList();
+		if ( groups.Count == 0 )
+			return;
+
+		menu.AddSeparator();
+		var grouped = menu.AddMenu( "Add to Group", "folder" );
+		foreach ( var group in groups )
+		{
+			AddParameterOptions( grouped.AddMenu( group, "folder" ), group );
+		}
+	}
+
+	/// <summary>
+	/// Every parameter type that fits the graph, sorted into submenus. Choosing one adds it to <paramref name="group"/>.
+	/// </summary>
+	private void AddParameterOptions( Sandbox.UI.Menu root, string group )
+	{
+		void AddOption( Sandbox.UI.Menu menu, IBlackboardParameterType parameterType, string icon, string description )
+		{
+			var option = menu.AddOption( parameterType.Type.Title, !string.IsNullOrWhiteSpace( icon ) ? icon : null, () =>
+			{
+				CreateNewParameter( parameterType, group );
+			} );
+
+			option.Tooltip = description;
+		}
+
 		IBlackboardParameterType[] avalibleTypes = BlackboardParameter.GetRelevantParameters( _availableParameters, Graph.IsSubgraph ).ToArray();
+
+		var target = root;
 
 		if ( !_isSubgraph )
 		{
-			var materialParametersMenu = menu.AddMenu( "Parameter", "edit_attributes" );
-			var attributesMenu = menu.AddMenu( "Attribute", "edit_attributes" );
-			var materialCombosMenu = menu.AddMenu( "Combo", "alt_route" );
+			var materialParametersMenu = root.AddMenu( "Parameter", "edit_attributes" );
+			var attributesMenu = root.AddMenu( "Attribute", "edit_attributes" );
+			var materialCombosMenu = root.AddMenu( "Combo", "alt_route" );
 
 			foreach ( var parameterType in avalibleTypes.OfType<ClassBlackboardParameterType>().OrderBy( x => x.Type.Order ) )
 			{
@@ -196,24 +242,24 @@ public sealed class BlackboardPanel : Panel
 
 				if ( targetType.IsAssignableTo( typeof( IBlackboardMaterialParameter ) ) || targetType.IsAssignableTo( typeof( BlackboardTextureMaterialParameter ) ) )
 				{
-					menu = materialParametersMenu;
+					target = materialParametersMenu;
 				}
 				else if ( targetType.IsAssignableTo( typeof( IBlackboardShaderFeatureParameter ) ) )
 				{
-					menu = materialCombosMenu;
+					target = materialCombosMenu;
 				}
 				else if ( targetType == typeof( SamplerStateParameter ) )
 				{
-					menu = attributesMenu;
+					target = attributesMenu;
 				}
 
-				AddOption( menu, parameterType, icon, description );
+				AddOption( target, parameterType, icon, description );
 			}
 		}
 		else
 		{
-			var subgraphInputsMenu = menu.AddMenu( "Input", "input" );
-			var subgraphOutputsMenu = menu.AddMenu( "Output", "output" );
+			var subgraphInputsMenu = root.AddMenu( "Input", "input" );
+			var subgraphOutputsMenu = root.AddMenu( "Output", "output" );
 
 			foreach ( var parameterType in avalibleTypes.OfType<ClassBlackboardParameterType>().OrderBy( x => x.Type.Order ) )
 			{
@@ -223,16 +269,90 @@ public sealed class BlackboardPanel : Panel
 
 				if ( targetType.IsAssignableTo( typeof( IBlackboardSubgraphInputParameter ) ) )
 				{
-					menu = subgraphInputsMenu;
+					target = subgraphInputsMenu;
 				}
 				else if ( targetType.IsAssignableTo( typeof( IBlackboardSubgraphOutputParameter ) ) )
 				{
-					menu = subgraphOutputsMenu;
+					target = subgraphOutputsMenu;
 				}
 
-				AddOption( menu, parameterType, icon, description );
+				AddOption( target, parameterType, icon, description );
 			}
 		}
+	}
+
+	/// <summary>
+	/// "Move to Group": General, then each existing group with a check on the parameter's own, then a new one.
+	/// </summary>
+	private void AddGroupOptions( Sandbox.UI.Menu menu, IGroupableBlackboardParameter parameter )
+	{
+		var groups = menu.AddMenu( "Move to Group", "folder" );
+		groups.AddOption( BlackboardGlobals.EmptyGroupName, null, () => MoveToGroup( parameter, "" ) ).Checked = string.IsNullOrEmpty( GroupName( parameter ) );
+
+		foreach ( var group in ExistingGroups() )
+		{
+			groups.AddOption( group, null, () => MoveToGroup( parameter, group ) ).Checked = GroupName( parameter ).Equals( group, StringComparison.OrdinalIgnoreCase );
+		}
+
+		groups.AddSeparator();
+		groups.AddOption( "New Group…", "create_new_folder", () => OpenGroupNameDialog( "New Parameter Group", "", name => MoveToGroup( parameter, name ) ) );
+	}
+
+	/// <summary>
+	/// Open a context menu, filled in by <paramref name="build"/>, under the mouse. Replaces the one already open.
+	/// </summary>
+	private void OpenMenu( Panel source, Action<Sandbox.UI.Menu> build )
+	{
+		_menu?.Delete( true );
+
+		var menu = new Sandbox.UI.Menu();
+		_menu = menu;
+		build( menu );
+		menu.Closed += OnMenuClosed;
+		menu.Open( source, Popup.PositionMode.UnderMouse );
+	}
+
+	private void OnMenuClosed( Sandbox.UI.Menu menu )
+	{
+		if ( _menu == menu ) _menu = null;
+		menu.Delete( true );
+	}
+
+	/// <summary>
+	/// A parameter's right-click menu: rename, move to a group, delete.
+	/// </summary>
+	internal void OpenParameterMenu( ParameterRow row )
+	{
+		var parameter = row.Parameter;
+
+		OpenMenu( row, menu =>
+		{
+			menu.AddOption( "Rename", "edit", row.StartRename ).Shortcut = "F2";
+			AddGroupOptions( menu, parameter );
+
+			menu.AddSeparator();
+			menu.AddOption( "Delete", "delete", () => Remove( parameter ) ).Shortcut = "Del";
+		} );
+	}
+
+	/// <summary>
+	/// A group header's right-click menu: add a parameter to it, and for any group but General, rename or remove it.
+	/// </summary>
+	internal void OpenGroupMenu( ParameterGroupHeader header )
+	{
+		var group = header.Group;
+
+		OpenMenu( header, menu =>
+		{
+			AddParameterOptions( menu.AddMenu( "Add Parameter", "add" ), group.Name );
+
+			if ( group.Name.Equals( BlackboardGlobals.EmptyGroupName, StringComparison.OrdinalIgnoreCase ) )
+				return;
+
+			menu.AddSeparator();
+			menu.AddOption( "Rename Group", "edit", () => RenameGroup( group.Name ) );
+			menu.AddOption( "Remove Group", "folder_off", () => ClearGroup( group.Name ) );
+		} );
 	}
 
 	/// <summary>
@@ -263,17 +383,13 @@ public sealed class BlackboardPanel : Panel
 
 			RemoveParameterFromGroupData( parameter );
 
-			if ( Graph.TryFindGroupData( parameter.GetGroupTitle(), out var group ) )
-			{
-				group.ParameterReferences.Remove( parameter.Identifier );
-
-				if ( group.ParameterReferences.Count == 0 )
-					Graph.RemoveGroupData( group );
-			}
-
 			RebuildParameterOrder();
 
-			BuildFromParameters( Graph.Parameters );
+			PruneCollapsedGroups();
+
+			OnDirty?.Invoke( true );
+
+			QueueRebuild();
 		}
 
 		if ( parameterNodes.Length == 0 )
@@ -297,14 +413,246 @@ public sealed class BlackboardPanel : Panel
 		if ( Selected == parameter )
 			return;
 
+		ApplySelection( parameter );
+	}
+
+	/// <summary>
+	/// Select <paramref name="parameter"/> and tell the listeners even when it already was, so whatever shows
+	/// it picks up the rename or move.
+	/// </summary>
+	private void Reselect( IBlackboardParameter parameter ) => ApplySelection( parameter );
+
+	private void ApplySelection( IBlackboardParameter parameter )
+	{
 		Selected = (BlackboardParameter)parameter;
 
-		foreach ( var row in _list.Children.OfType<ParameterRow>() )
+		foreach ( var row in _rowPanels )
 		{
 			row.SetSelected( row.Parameter == parameter );
 		}
 
-		OnSelected?.Invoke( (BlackboardParameter)parameter );
+		OnSelected?.Invoke( Selected );
+	}
+
+	/// <summary>
+	/// F2 renames the selected parameter and Delete removes it, unless the filter has the keyboard.
+	/// </summary>
+	public override void OnButtonTyped( ButtonEvent e )
+	{
+		if ( Selected is { } selected && !_searchFilter.HasFocus )
+		{
+			if ( e.Button == "f2" )
+			{
+				BeginRename( selected );
+				e.StopPropagation = true;
+				return;
+			}
+
+			if ( e.Button == "delete" )
+			{
+				Remove( selected );
+				e.StopPropagation = true;
+				return;
+			}
+		}
+
+		base.OnButtonTyped( e );
+	}
+
+	public override void Tick()
+	{
+		base.Tick();
+
+		if ( _rebuildPending )
+			RebuildFromGraph();
+
+		if ( _dragSource is { IsValid: true } )
+			UpdateDropIndicator();
+	}
+
+	private void QueueRebuild() => _rebuildPending = true;
+
+	/// <summary>
+	/// Rename a parameter. Empty names, the same name, and names another parameter has are ignored.
+	/// </summary>
+	internal void Rename( IBlackboardParameter parameter, string name )
+	{
+		name = name?.Trim();
+
+		if ( string.IsNullOrEmpty( name ) || name == parameter.Name )
+			return;
+
+		if ( Graph.Parameters.Any( p => p != parameter && p.Name.Equals( name, StringComparison.OrdinalIgnoreCase ) ) )
+			return;
+
+		parameter.Name = name;
+
+		OnDirty?.Invoke( true );
+
+		Reselect( parameter );
+
+		QueueRebuild();
+	}
+
+	internal void BeginRename( IBlackboardParameter parameter )
+		=> _rowPanels.FirstOrDefault( r => r.Parameter == parameter )?.StartRename();
+
+	/// <summary>
+	/// Collapse or expand a group. Not while filtering, when every matching group shows.
+	/// </summary>
+	internal void ToggleGroup( string group )
+	{
+		if ( !string.IsNullOrWhiteSpace( _filter ) )
+			return;
+
+		if ( !_collapsedGroups.Add( group ) )
+			_collapsedGroups.Remove( group );
+
+		SaveCollapsedGroups();
+		QueueRebuild();
+	}
+
+	internal void MoveToGroup( IGroupableBlackboardParameter parameter, string targetGroupName )
+	{
+		targetGroupName = NormalizeGroup( targetGroupName );
+		if ( GroupName( parameter ).Equals( targetGroupName, StringComparison.OrdinalIgnoreCase ) )
+			return;
+
+		var sourceGroupName = parameter.Group;
+		ExpandGroup( targetGroupName );
+		PruneCollapsedGroups();
+
+		SetGroupData( sourceGroupName, targetGroupName, parameter );
+
+		RebuildParameterOrder();
+
+		OnDirty?.Invoke( true );
+
+		Reselect( parameter );
+
+		QueueRebuild();
+	}
+
+	/// <summary>
+	/// Move a group to index <paramref name="priority"/> in the graph's group order.
+	/// </summary>
+	internal void ReorderGroup( GroupData group, int priority )
+	{
+		Graph.ReOrderGroup( group, priority );
+
+		RebuildParameterOrder();
+
+		OnDirty?.Invoke( true );
+
+		QueueRebuild();
+	}
+
+	/// <summary>
+	/// A parameter row dropped on another: reorder within the group, or move into the target's group, next to the target.
+	/// </summary>
+	internal void DropParameter( ParameterRow source, ParameterRow target, DropMode mode )
+	{
+		var sourceParameter = source.Parameter;
+		var targetParameter = target.Parameter;
+
+		var sourceGroupName = GroupTitle( sourceParameter.Group );
+		var targetGroupName = GroupTitle( targetParameter.Group );
+
+		if ( !Graph.TryFindGroupData( sourceGroupName, out var sourceGroupData ) )
+			return;
+
+		if ( !sourceGroupName.Equals( targetGroupName, StringComparison.OrdinalIgnoreCase ) && Graph.TryFindGroupData( targetGroupName, out var targetGroupData ) )
+		{
+			var targetIndex = targetGroupData.ParameterReferences.IndexOf( targetParameter.Identifier );
+
+			if ( mode == DropMode.Below )
+			{
+				targetIndex++;
+			}
+
+			sourceGroupData.ParameterReferences.Remove( sourceParameter.Identifier );
+
+			if ( sourceGroupData.ParameterReferences.Count == 0 )
+			{
+				Graph.RemoveGroupData( sourceGroupData );
+			}
+
+			targetGroupData.ParameterReferences.Insert( Math.Clamp( targetIndex, 0, targetGroupData.ParameterReferences.Count ), sourceParameter.Identifier );
+
+			sourceParameter.Group = targetParameter.Group;
+		}
+		else
+		{
+			var targetIndex = sourceGroupData.ParameterReferences.IndexOf( targetParameter.Identifier );
+
+			sourceGroupData.ParameterReferences.Remove( sourceParameter.Identifier );
+			sourceGroupData.ParameterReferences.Insert( Math.Clamp( targetIndex, 0, sourceGroupData.ParameterReferences.Count ), sourceParameter.Identifier );
+		}
+
+		PruneCollapsedGroups();
+
+		RebuildParameterOrder();
+
+		OnDirty?.Invoke( true );
+
+		QueueRebuild();
+	}
+
+	/// <summary>
+	/// Called as <paramref name="source"/> starts being dragged.
+	/// </summary>
+	internal void BeginDrag( BlackboardItem source )
+	{
+		ClearDropIndicators();
+		_dragSource = source;
+	}
+
+	internal void EndDrag( BlackboardItem source )
+	{
+		if ( _dragSource == source )
+			_dragSource = null;
+
+		ClearDropIndicators();
+	}
+
+	/// <summary>
+	/// Show where the dragged item would land on whatever is under the mouse, and nothing on the rest. Polled
+	/// each tick instead of tracking drag enter and leave, which fire for every child the mouse crosses.
+	/// </summary>
+	private void UpdateDropIndicator()
+	{
+		BlackboardItem hovered = null;
+
+		if ( IsUnderMouse( _list ) )
+		{
+			hovered = _headers.FirstOrDefault( IsUnderMouse );
+			hovered ??= _rowPanels.FirstOrDefault( IsUnderMouse );
+		}
+
+		foreach ( var header in _headers )
+		{
+			header.DropIndicator = header == hovered ? header.GetDrop( _dragSource ) : DropMode.None;
+		}
+
+		foreach ( var row in _rowPanels )
+		{
+			row.DropIndicator = row == hovered ? row.GetDrop( _dragSource ) : DropMode.None;
+		}
+	}
+
+	private static bool IsUnderMouse( Panel panel ) => panel.IsInside( panel.MousePosition + panel.Box.Rect.Position );
+
+	private void ClearDropIndicators()
+	{
+		foreach ( var header in _headers )
+		{
+			header.DropIndicator = DropMode.None;
+		}
+
+		foreach ( var row in _rowPanels )
+		{
+			row.DropIndicator = DropMode.None;
+		}
 	}
 
 	private void ExpandGroup( string group )
@@ -418,9 +766,6 @@ public sealed class BlackboardPanel : Panel
 			if ( newName.Equals( oldName, StringComparison.OrdinalIgnoreCase ) )
 				return;
 
-			// TODO
-			//using var undoScope = UndoScope( "Rename Parameter Group" );
-
 			foreach ( var parameter in Graph.Parameters.Where( p => GroupName( p ).Equals( oldName, StringComparison.OrdinalIgnoreCase ) ) )
 			{
 				SetGroupData( oldName, newName, parameter, true );
@@ -437,6 +782,10 @@ public sealed class BlackboardPanel : Panel
 				_collapsedGroups.Add( newName );
 
 			PruneCollapsedGroups();
+
+			OnDirty?.Invoke( true );
+
+			QueueRebuild();
 		} );
 	}
 
@@ -444,8 +793,6 @@ public sealed class BlackboardPanel : Panel
 	{
 		if ( string.IsNullOrEmpty( group ) )
 			return;
-
-		//using var undoScope = UndoScope( "Remove Parameter Group" );
 
 		foreach ( var parameter in Graph.Parameters.Where( p => GroupName( p ).Equals( group, StringComparison.OrdinalIgnoreCase ) ) )
 		{
@@ -457,25 +804,65 @@ public sealed class BlackboardPanel : Panel
 
 		_collapsedGroups.Remove( group );
 		SaveCollapsedGroups();
+
+		OnDirty?.Invoke( true );
+
+		QueueRebuild();
 	}
 
 	/// <summary>
-	/// Recreate the rows from the graph, applying the filter.
+	/// Recreate the list from <paramref name="parameters"/>, applying the filter: a header per group in the graph's
+	/// group order, then each expanded group's rows in the group's order.
 	/// </summary>
 	public void BuildFromParameters( IEnumerable<IBlackboardParameter> parameters, bool preserveSelection = false )
 	{
 		_list.DeleteChildren( true );
+		_rowPanels.Clear();
+		_headers.Clear();
+		_dragSource = null;
+		_rebuildPending = false;
 
-		if ( parameters.Count() == 0 )
+		if ( Graph is null )
 		{
-			_list.Add.Label( Graph is null ? "No graph open" : !string.IsNullOrEmpty( _filter ) ? "No matching parameters" : "No parameters yet - add one with +", "empty" );
+			_list.SetClass( "is-empty", true );
+			_list.Add.Label( "No graph open", "empty" );
 			return;
 		}
 
-		foreach ( var parameter in parameters )
+		var groups = OrderedGroups( parameters ).ToList();
+
+		_list.SetClass( "is-empty", groups.Count == 0 );
+
+		if ( groups.Count == 0 )
 		{
-			var row = _list.AddChild( new ParameterRow( this, (BlackboardParameter)parameter ) );
-			row.SetSelected( parameter == Selected );
+			_list.Add.Label( Graph.Parameters.Any() ? "No matching parameters" : "No parameters yet - add one with +", "empty" );
+			return;
+		}
+
+		var filtering = !string.IsNullOrWhiteSpace( _filter );
+
+		foreach ( var group in groups )
+		{
+			var collapsed = !filtering && _collapsedGroups.Contains( group.Key );
+			var groupData = GroupDataFor( group.Key );
+
+			_headers.Add( _list.AddChild( new ParameterGroupHeader( this, groupData, group.Count(), collapsed, !filtering ) ) );
+
+			if ( collapsed )
+				continue;
+
+			var body = _list.Add.Panel( "sg-group-body" );
+
+			foreach ( var parameter in group )
+			{
+				var blackboardParameter = (BlackboardParameter)parameter;
+				blackboardParameter.Graph = Graph;
+
+				var row = body.AddChild( new ParameterRow( this, blackboardParameter, groupData ) );
+				row.SetSelected( blackboardParameter == Selected );
+
+				_rowPanels.Add( row );
+			}
 		}
 	}
 
@@ -483,11 +870,7 @@ public sealed class BlackboardPanel : Panel
 	{
 		if ( Graph is not null )
 		{
-			var parameters = Graph?.Parameters.Where( MatchesFilter ).ToArray() ?? [];
-
-			_list.SetClass( "is-empty", parameters.Length == 0 );
-
-			BuildFromParameters( parameters, preserveSelection );
+			BuildFromParameters( Graph.Parameters, preserveSelection );
 		}
 	}
 
@@ -504,15 +887,7 @@ public sealed class BlackboardPanel : Panel
 		{
 			foreach ( var parameterReference in group.ParameterReferences )
 			{
-				var parameter = Graph.FindParameter( parameterReference );
-
-				if ( parameterReferences.Add( parameterReference ) )
-				{
-					/*
-					var currentIndex = parameterReferences.Count;
-					SGPLogger.Info( $"Parameter \"{parameter.Name}\" at index \"{( currentIndex > 0 ? currentIndex - 1 : currentIndex )}\"" );
-					*/
-				}
+				parameterReferences.Add( parameterReference );
 			}
 		}
 
@@ -522,14 +897,85 @@ public sealed class BlackboardPanel : Panel
 		}
 	}
 
+	/// <summary>
+	/// The graph changed. Rebuild the list if what it shows - the parameters, their order, groups and names - no longer matches.
+	/// </summary>
 	internal void OnGraphDirty()
 	{
 		if ( Graph is null )
 			return;
 
-		/*
-		var parameters = Graph.Parameters.ToList();
-		*/
+		var parameters = DisplayedParameters( Graph.Parameters ).ToList();
+		var stale = _rowPanels.Count != parameters.Count;
+
+		for ( var i = 0; !stale && i < _rowPanels.Count; i++ )
+		{
+			var row = _rowPanels[i];
+			var parameter = parameters[i];
+
+			stale = !ReferenceEquals( row.Parameter, parameter ) || row.BuiltGroup != GroupName( parameter ) || row.BuiltName != parameter.Name;
+		}
+
+		if ( stale )
+			QueueRebuild();
+	}
+
+	/// <summary>
+	/// The parameters that pass the filter, grouped, groups in the graph's group order and each group's
+	/// parameters in the group's order.
+	/// </summary>
+	private IEnumerable<IGrouping<string, IGroupableBlackboardParameter>> OrderedGroups( IEnumerable<IBlackboardParameter> parameters )
+	{
+		return parameters.OfType<IGroupableBlackboardParameter>()
+			.Where( MatchesFilter )
+			.OrderBy( p => Graph.GetParameterIndexInGroup( GroupName( p ), p.Identifier ) )
+			.GroupBy( GroupName, StringComparer.OrdinalIgnoreCase )
+			.OrderBy( group => GroupIndex( group.Key ) );
+	}
+
+	/// <summary>
+	/// The parameters that have a row: everything matching the filter outside collapsed groups, in list order.
+	/// </summary>
+	private IEnumerable<IGroupableBlackboardParameter> DisplayedParameters( IEnumerable<IBlackboardParameter> parameters )
+	{
+		var filtering = !string.IsNullOrWhiteSpace( _filter );
+
+		foreach ( var group in OrderedGroups( parameters ) )
+		{
+			if ( !filtering && _collapsedGroups.Contains( group.Key ) )
+				continue;
+
+			foreach ( var parameter in group )
+				yield return parameter;
+		}
+	}
+
+	private int GroupIndex( string groupName )
+		=> Graph.TryFindGroupData( GroupTitle( groupName ), out var groupData ) ? Graph.GetGroupDataIndex( groupData ) : int.MaxValue;
+
+	/// <summary>
+	/// The graph's data for a group. A group the file has parameters for but no data - hand edited, or from before
+	/// groups were stored - gets some, so it shows and can be reordered.
+	/// </summary>
+	private GroupData GroupDataFor( string groupName )
+	{
+		var title = GroupTitle( groupName );
+
+		if ( Graph.TryFindGroupData( title, out var groupData ) )
+			return groupData;
+
+		groupData = new GroupData
+		{
+			Name = title,
+			ParameterReferences = Graph.Parameters
+				.Where( p => GroupName( p ).Equals( groupName, StringComparison.OrdinalIgnoreCase ) )
+				.Select( p => p.Identifier )
+				.ToList()
+		};
+
+		Graph.AddGroupData( groupData, title.Equals( BlackboardGlobals.EmptyGroupName, StringComparison.OrdinalIgnoreCase ) ? 0 : -1 );
+
+		return groupData;
 	}
 
 	private void OpenGroupNameDialog( string title, string initialValue, Action<string> accepted )
@@ -575,30 +1021,290 @@ public sealed class BlackboardPanel : Panel
 	/// <returns>The <paramref name="groupName"/> if it isnt null, empty or just whitespace, otherwise the empty group name.</returns>
 	internal static string GroupTitle( string groupName ) => string.IsNullOrWhiteSpace( groupName ) ? BlackboardGlobals.EmptyGroupName : groupName;
 
-	private bool MatchesFilter( BlackboardParameter parameter )
+	/// <summary>
+	/// Whether the filter matches the parameter's type, name, or group.
+	/// </summary>
+	private bool MatchesFilter( IGroupableBlackboardParameter parameter )
 	{
 		if ( string.IsNullOrEmpty( _filter ) )
 			return true;
 
 		return parameter.Name.Contains( _filter, StringComparison.OrdinalIgnoreCase )
-			|| ParameterRow.TypeConfig( parameter ).Name.Contains( _filter, StringComparison.OrdinalIgnoreCase );
+			|| parameter.DisplayInfo.Name.Contains( _filter, StringComparison.OrdinalIgnoreCase )
+			|| ParameterRow.TypeConfig( parameter ).Name.Contains( _filter, StringComparison.OrdinalIgnoreCase )
+			|| GroupTitle( GroupName( parameter ) ).Contains( _filter, StringComparison.OrdinalIgnoreCase );
+	}
+}
+
+/// <summary>
+/// How a dragged item lands on the item it's over.
+/// </summary>
+internal enum DropMode
+{
+	None,
+	Above,
+	Below,
+
+	/// <summary>
+	/// Into the item itself: a parameter onto a group header.
+	/// </summary>
+	Onto,
+}
+
+/// <summary>
+/// A parameter row or a group header: something that can be dragged within the blackboard and dropped onto.
+/// </summary>
+internal abstract class BlackboardItem : Panel
+{
+	protected BlackboardPanel Blackboard { get; }
+
+	/// <summary>
+	/// The drop indicator shown on this item: a line above or below it, or an outline around it.
+	/// </summary>
+	internal DropMode DropIndicator
+	{
+		get;
+		set
+		{
+			if ( field == value ) return;
+
+			field = value;
+			SetClass( "drop-above", value == DropMode.Above );
+			SetClass( "drop-below", value == DropMode.Below );
+			SetClass( "drop-onto", value == DropMode.Onto );
+		}
+	}
+
+	protected BlackboardItem( BlackboardPanel blackboard )
+	{
+		Blackboard = blackboard;
+
+		// The line or outline itself, shown by .drop-above, .drop-below and .drop-onto
+		Add.Panel( "drop" );
+	}
+
+	/// <summary>
+	/// Where <paramref name="source"/> would land if it were dropped here, or None if it can't be.
+	/// </summary>
+	internal abstract DropMode GetDrop( BlackboardItem source );
+
+	/// <summary>
+	/// Carry out the drop <see cref="GetDrop"/> described.
+	/// </summary>
+	protected abstract void ApplyDrop( BlackboardItem source, DropMode mode );
+
+	protected override void OnDragStart( DragEvent e )
+	{
+		AddClass( "dragging" );
+		Blackboard.BeginDrag( this );
+		e.StopPropagation();
+	}
+
+	/// <summary>
+	/// The drag is ours, not a scroll of the list.
+	/// </summary>
+	protected override void OnDrag( DragEvent e ) => e.StopPropagation();
+
+	protected override void OnDragEnd( DragEvent e )
+	{
+		RemoveClass( "dragging" );
+		Blackboard.EndDrag( this );
+		e.StopPropagation();
+	}
+
+	protected override void OnDragCancel( DragEvent e ) => OnDragEnd( e );
+
+	/// <summary>
+	/// Released over this item or one of its children, the event bubbling up to here. The source is the event's target.
+	/// </summary>
+	protected override void OnDrop( PanelEvent e )
+	{
+		// Files and text from outside the app aren't ours
+		if ( e is DropEvent || e.Target is not BlackboardItem source ) return;
+
+		e.StopPropagation();
+
+		var mode = GetDrop( source );
+		DropIndicator = DropMode.None;
+
+		if ( mode != DropMode.None )
+			ApplyDrop( source, mode );
+	}
+}
+
+/// <summary>
+/// A group's title in the list: collapse arrow, folder, name and parameter count. Click to collapse or expand,
+/// drop parameters on it to move them in, drag it to reorder the groups, right-click for group actions.
+/// </summary>
+internal sealed class ParameterGroupHeader : BlackboardItem
+{
+	private readonly bool _collapsible;
+
+	internal GroupData Group { get; }
+
+	/// <summary>
+	/// The group everything starts in. It always stays first.
+	/// </summary>
+	private bool IsGeneral => Group.Name.Equals( BlackboardGlobals.EmptyGroupName, StringComparison.OrdinalIgnoreCase );
+
+	public ParameterGroupHeader( BlackboardPanel blackboard, GroupData group, int count, bool collapsed, bool collapsible ) : base( blackboard )
+	{
+		Group = group;
+		group.Graph = blackboard.Graph;
+		_collapsible = collapsible;
+
+		var title = BlackboardPanel.GroupTitle( group.Name );
+
+		AddClass( "sg-group" );
+		SetClass( "collapsed", collapsed );
+		SetClass( "fixed", !collapsible );
+
+		this.Icon( collapsed ? "chevron_right" : "expand_more", "arrow" );
+		this.Icon( "folder", "folder" );
+		Add.Label( title, "title" );
+		Add.Label( count.ToString(), "count" );
+
+		var reorder = IsGeneral ? "" : "\nDrag to reorder this group.";
+
+		Tooltip = collapsible
+			? $"{title}\nClick to collapse or expand.\nDrag parameters here to move them into this group.{reorder}\nRight-click for group actions."
+			: $"{title}\nMatching groups are expanded while filtering.\nDrag parameters here to move them into this group.{reorder}\nRight-click for group actions.";
+	}
+
+	/// <summary>
+	/// The General group stays put, so it isn't dragged; that leaves the drag to scroll the list.
+	/// </summary>
+	public override bool WantsDrag => !IsGeneral;
+
+	protected override void OnClick( MousePanelEvent e )
+	{
+		if ( !_collapsible ) return;
+
+		e.StopPropagation();
+		Blackboard.ToggleGroup( IsGeneral ? "" : Group.Name );
+	}
+
+	protected override void OnRightClick( MousePanelEvent e )
+	{
+		e.StopPropagation();
+		Blackboard.OpenGroupMenu( this );
+	}
+
+	/// <summary>
+	/// A parameter dropped here moves into the group. A group dropped here takes its place: below when it came from
+	/// above, above when it came from below. Nothing lands on or moves the General group.
+	/// </summary>
+	internal override DropMode GetDrop( BlackboardItem source )
+	{
+		switch ( source )
+		{
+			case ParameterRow row:
+				return BlackboardPanel.GroupTitle( BlackboardPanel.GroupName( row.Parameter ) ).Equals( Group.Name, StringComparison.OrdinalIgnoreCase )
+					? DropMode.None
+					: DropMode.Onto;
+
+			case ParameterGroupHeader header when header != this && !header.IsGeneral && !IsGeneral:
+				var graph = Blackboard.Graph;
+
+				return graph.GetGroupDataIndex( header.Group ) <= graph.GetGroupDataIndex( Group )
+					? DropMode.Below
+					: DropMode.Above;
+
+			default:
+				return DropMode.None;
+		}
+	}
+
+	protected override void ApplyDrop( BlackboardItem source, DropMode mode )
+	{
+		switch ( source )
+		{
+			case ParameterRow row:
+				Blackboard.MoveToGroup( row.Parameter, Group.Name );
+				break;
+
+			case ParameterGroupHeader header:
+				Blackboard.ReorderGroup( header.Group, Blackboard.Graph.GetGroupDataIndex( Group ) );
+				break;
+		}
+	}
+}
+
+/// <summary>
+/// The text field that stands in for a row's name while it's renamed. Enter or losing focus commits, Escape cancels.
+/// </summary>
+internal sealed class RenameEntry : Sandbox.UI.TextEntry
+{
+	private readonly ParameterRow _row;
+	private bool _cancelled;
+	private bool _selected;
+
+	public RenameEntry( ParameterRow row, string text )
+	{
+		_row = row;
+		AddClass( "rename" );
+		Text = text;
+	}
+
+	public override void Tick()
+	{
+		base.Tick();
+
+		// Selecting before the label has had a frame to lay its text out does nothing
+		if ( _selected || !HasFocus ) return;
+
+		_selected = true;
+		Label.ShouldDrawSelection = true;
+		Label.SetSelection( 0, TextLength );
+		CaretPosition = TextLength;
+	}
+
+	public override void OnButtonTyped( ButtonEvent e )
+	{
+		// The base cancels by blurring, and blurring commits, so say so first
+		if ( e.Button == "escape" ) _cancelled = true;
+
+		base.OnButtonTyped( e );
+	}
+
+	protected override void OnBlur( PanelEvent e )
+	{
+		base.OnBlur( e );
+		_row.EndRename( _cancelled ? null : Text );
 	}
 }
 
 /// <summary>
 /// One parameter: a strip and type label in the type's color, the name, its tags, and the default value.
 /// </summary>
-internal sealed class ParameterRow : Panel
+internal sealed class ParameterRow : BlackboardItem
 {
-	private Sandbox.UI.Menu _menu;
-	private readonly BlackboardPanel _blackboard;
+	private readonly Sandbox.UI.Label _nameLabel;
+	private RenameEntry _rename;
 
-	internal BlackboardParameter Parameter { get; private set; }
+	internal BlackboardParameter Parameter { get; }
 
-	public ParameterRow( BlackboardPanel blackboard, BlackboardParameter parameter )
+	/// <summary>
+	/// The group data the row was built under.
+	/// </summary>
+	internal GroupData Group { get; }
+
+	/// <summary>
+	/// The group and name the row was built with, to tell when the parameter has moved on and the list is stale.
+	/// </summary>
+	internal string BuiltGroup { get; }
+
+	/// <inheritdoc cref="BuiltGroup"/>
+	internal string BuiltName { get; }
+
+	internal bool IsRenaming => _rename is not null;
+
+	public ParameterRow( BlackboardPanel blackboard, BlackboardParameter parameter, GroupData group ) : base( blackboard )
 	{
-		_blackboard = blackboard;
 		Parameter = parameter;
+		Group = group;
+		BuiltGroup = BlackboardPanel.GroupName( parameter );
+		BuiltName = parameter.Name;
 
 		AddClass( "sg-param" );
 
@@ -611,7 +1317,7 @@ internal sealed class ParameterRow : Panel
 
 		AddTypeChip( this, config );
 
-		Add.Label( parameter.Name, "name" );
+		_nameLabel = Add.Label( parameter.Name, "name" );
 
 		var tags = Add.Panel( "tags" );
 		foreach ( var tag in Tags( parameter ) )
@@ -663,7 +1369,7 @@ internal sealed class ParameterRow : Panel
 			foreach ( var tag in tags ) row.Add.Label( tag, "tag" );
 		}
 
-		tip.Add.Label( "Right-click to delete", "hint" );
+		tip.Add.Label( "Drag onto the graph to create a node, or onto another parameter to reorder. Double-click or F2 to rename. Right-click for more.", "hint" );
 	}
 
 	private static Panel Detail( Panel tip, string key )
@@ -679,34 +1385,94 @@ internal sealed class ParameterRow : Panel
 	internal void SetSelected( bool selected ) => SetClass( "selected", selected );
 
 	/// <summary>
-	/// Dragged onto the graph, the row becomes a node for its parameter.
+	/// Dragged onto the graph, the row becomes a node for its parameter; dragged within the blackboard
+	/// it moves. While it's being renamed it's a text field, not a drag handle.
 	/// </summary>
-	public override bool WantsDrag => true;
-
-	/// <summary>
-	/// The drag is ours, not a scroll of the list.
-	/// </summary>
-	protected override void OnDrag( DragEvent e ) => e.StopPropagation();
+	public override bool WantsDrag => !IsRenaming;
 
 	protected override void OnMouseDown( MousePanelEvent e )
 	{
 		base.OnMouseDown( e );
 
 		if ( e.Button == "mouseleft" )
-			_blackboard.Select( Parameter );
+			Blackboard.Select( Parameter );
+	}
+
+	protected override void OnDoubleClick( MousePanelEvent e )
+	{
+		if ( e.Button != "mouseleft" ) return;
+
+		e.StopPropagation();
+		StartRename();
 	}
 
 	protected override void OnRightClick( MousePanelEvent e )
 	{
 		e.StopPropagation();
-		_blackboard.Select( Parameter );
-		_menu?.Delete( true );
+		Blackboard.Select( Parameter );
+		Blackboard.OpenParameterMenu( this );
+	}
 
-		var menu = new Sandbox.UI.Menu();
-		_menu = menu;
-		menu.AddOption( "Delete", "delete", () => _blackboard.Remove( (BlackboardParameter)Parameter ) );
-		menu.Closed += _ => { if ( _menu == menu ) _menu = null; menu.Delete( true ); };
-		menu.Open( this, Popup.PositionMode.UnderMouse );
+	/// <summary>
+	/// Swap the name for a text field until Enter, Escape, or focus loss.
+	/// </summary>
+	internal void StartRename()
+	{
+		if ( IsRenaming ) return;
+
+		_rename = new RenameEntry( this, Parameter.Name );
+		AddChild( _rename );
+		SetChildIndex( _rename, GetChildIndex( _nameLabel ) + 1 );
+		AddClass( "renaming" );
+
+		_rename.Focus();
+	}
+
+	/// <summary>
+	/// Put the name back. <paramref name="text"/> is what to rename the parameter to, or null to keep its name.
+	/// </summary>
+	internal void EndRename( string text )
+	{
+		if ( _rename is null ) return;
+
+		var entry = _rename;
+		_rename = null;
+		entry.Delete( true );
+		RemoveClass( "renaming" );
+
+		if ( text is not null )
+			Blackboard.Rename( Parameter, text );
+	}
+
+	/// <summary>
+	/// Same group: the dragged row takes the target's slot, so it lands below when it came from above and above
+	/// when it came from below. Another group: below when that group is further down, above when it's further up.
+	/// </summary>
+	internal override DropMode GetDrop( BlackboardItem source )
+	{
+		if ( source is not ParameterRow dragged || dragged.Parameter == Parameter )
+			return DropMode.None;
+
+		if ( dragged.Group.Name.Equals( Group.Name, StringComparison.OrdinalIgnoreCase ) )
+		{
+			var references = Group.ParameterReferences;
+
+			return references.IndexOf( dragged.Parameter.Identifier ) < references.IndexOf( Parameter.Identifier )
+				? DropMode.Below
+				: DropMode.Above;
+		}
+
+		var graph = Blackboard.Graph;
+
+		return graph.GetGroupDataIndex( Group ) > graph.GetGroupDataIndex( dragged.Group )
+			? DropMode.Below
+			: DropMode.Above;
+	}
+
+	protected override void ApplyDrop( BlackboardItem source, DropMode mode )
+	{
+		if ( source is ParameterRow dragged )
+			Blackboard.DropParameter( dragged, this, mode );
 	}
 
 	/// <summary>
