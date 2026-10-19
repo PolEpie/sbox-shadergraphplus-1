@@ -8,7 +8,7 @@ namespace ShaderGraphPlus;
 /// project's shader templates.
 /// </summary>
 [CustomEditor( typeof( string ), NamedEditor = ControlWidgetCustomEditors.ShaderTypeDropdownEditor )]
-internal sealed class ShaderTypeDropdownPanel : DropdownControl<string>
+internal sealed class ShaderTypeDropdownPanel : DropdownControlPlus<string>
 {
 	public override void Rebuild()
 	{

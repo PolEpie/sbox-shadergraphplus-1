@@ -7,7 +7,7 @@ namespace ShaderGraphPlus;
 /// Panel version of <see cref="PortTypeControlWidget"/>.
 /// </summary>
 [CustomEditor( typeof( string ), NamedEditor = ControlWidgetCustomEditors.PortTypeChoiceEditor )]
-sealed class PortTypeControl : DropdownControl<string>
+sealed class PortTypeControl : DropdownControlPlus<string>
 {
 	public override void Rebuild()
 	{

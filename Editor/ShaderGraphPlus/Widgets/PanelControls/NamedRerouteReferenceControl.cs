@@ -9,7 +9,7 @@ namespace ShaderGraphPlus;
 /// named reroute declarations.
 /// </summary>
 [CustomEditor( typeof( string ), NamedEditor = ControlWidgetCustomEditors.NamedRerouteReferenceEditor )]
-internal sealed class NamedRerouteReferenceControl : DropdownControl<string>
+internal sealed class NamedRerouteReferenceControl : DropdownControlPlus<string>
 {
 	ShaderGraphPlus Graph => Property?.Parent?.Targets?.OfType<NamedRerouteNode>().FirstOrDefault()?.Graph as ShaderGraphPlus;
 
