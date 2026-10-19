@@ -83,8 +83,10 @@ public static partial class ShaderTemplate
 
 		foreach ( var asset in templates )
 		{
+			// Same read as the window's LoadShaderTypeInfo - not every template is on the content filesystem
 			var template = new ShaderTemplateResource();
-			template.Deserialize( Editor.FileSystem.Content.ReadAllText( asset.Path ) );
+			var json = File.Exists( asset.AbsolutePath ) ? File.ReadAllText( asset.AbsolutePath ) : null;
+			if ( json is not null ) template.Deserialize( json, Path.GetFileName( asset.AbsolutePath ) );
 
 			var label = string.IsNullOrWhiteSpace( template.Title ) ? asset.Name : template.Title;
 			var icon = string.IsNullOrWhiteSpace( template.Icon ) ? "view_in_ar" : template.Icon;
