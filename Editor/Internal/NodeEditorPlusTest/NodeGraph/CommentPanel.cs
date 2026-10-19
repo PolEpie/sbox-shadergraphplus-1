@@ -49,6 +49,11 @@ public class CommentPanel : NodePanel
 	}
 
 	/// <summary>
+	/// Comments stay behind the nodes even while dragged or focused.
+	/// </summary>
+	protected override bool RaisesOnInteraction => false;
+
+	/// <summary>
 	/// The panels of this comment's members.
 	/// </summary>
 	public IEnumerable<NodePanel> MemberPanels()
