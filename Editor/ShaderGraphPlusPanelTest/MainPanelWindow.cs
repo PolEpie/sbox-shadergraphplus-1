@@ -192,17 +192,36 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 			_graphView.RebuildFromGraph();
 		};
 
-		//_blackboard.OnSelected = parameter => _properties.Target = (object)parameter ?? _graph;
-
 		_graphView = new ShaderGraphPlusViewPanel( _blackboard );
 		_graphView.Graph = _graph;
 		_graphView.SelectionChanged += () =>
 		{
 			// Nothing, or several, selected shows the graph, like the Qt editor
 			var selected = _graphView.SelectedNodes.Take( 2 ).ToArray();
-			_properties.Target = selected.Length == 1 ? (object)selected[0].Node : _graph;
+			if ( selected.Length != 1 )
+			{
+				_properties.Target = _graph;
+				return;
+			}
+
+			// A parameter node has nothing of its own to edit - show its parameter, like the Qt editor
+			var node = selected[0].Node;
+			if ( node is IBlackboardNode { ParameterIdentifier: var id } && id != default && _graph.TryFindParameter( id, out var parameter ) )
+			{
+				_properties.Target = parameter;
+				return;
+			}
+
+			_properties.Target = node;
 		};
 		_palette = new PalettePanel( IsSubgraph );
+
+		// After the graph view's handler: it clears the graph selection, which shows the graph,
+		// then the picked parameter takes over. Unpicking leaves whatever the graph selection shows.
+		_blackboard.OnSelected += parameter =>
+		{
+			if ( parameter is not null ) _properties.Target = parameter;
+		};
 
 		_properties = new PropertiesPanel();
 		_properties.Target = _graph;
