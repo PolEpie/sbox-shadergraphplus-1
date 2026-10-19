@@ -196,6 +196,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		_blackboard = new BlackboardPanel( IsSubgraph );
 		_blackboard.Graph = _graph;
 		_blackboard.OnDirty += ( evaluate ) => SetDirty( evaluate );
+		_graphView.Blackboard = _blackboard;
 		//_blackboard.OnSelected = parameter => _properties.Target = (object)parameter ?? _graph;
 
 		_properties = new PropertiesPanel();
@@ -456,17 +457,17 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 	private void CutSelection()
 	{
-		SGPLogger.Info( $"TODO : Cut Selection" );
+		_graphView.CutSelection();
 	}
 
 	private void CopySelection()
 	{
-		SGPLogger.Info( $"TODO : Copy Selection" );
+		_graphView.CopySelection();
 	}
 
 	private void PasteSelection()
 	{
-		SGPLogger.Info( $"TODO : Paste Selection" );
+		_graphView.Paste( EditorUtility.Clipboard.Paste() );
 	}
 
 	private void SelectAll()

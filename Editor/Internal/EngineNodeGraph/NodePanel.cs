@@ -52,6 +52,11 @@ public partial class NodePanel : CanvasPanel.Handle
 	public List<PlugOutPanel> Outputs = new();
 
 	/// <summary>
+	/// Wires this node paints this frame, under its body: see <see cref="Connection.PaintOwner"/>.
+	/// </summary>
+	internal readonly List<Connection> PaintedWires = new();
+
+	/// <summary>
 	/// Node size in node units, from <see cref="Layout"/>.
 	/// </summary>
 	public Vector2 Size { get; protected set; }
@@ -105,7 +110,10 @@ public partial class NodePanel : CanvasPanel.Handle
 		MoveTo( Node.Position );
 	}
 
-	void BuildTooltip( Panel tip )
+	/// <summary>
+	/// Fill the node's tooltip.
+	/// </summary>
+	protected virtual void BuildTooltip( Panel tip )
 	{
 		var label = tip.AddChild<Label>();
 		label.IsRich = true;
@@ -113,6 +121,40 @@ public partial class NodePanel : CanvasPanel.Handle
 	}
 
 	public override bool HasTooltip => !IsDragging && base.HasTooltip;
+
+	/// <summary>
+	/// Whether dragging or focusing the node lifts it over the others. Comments stay behind.
+	/// </summary>
+	protected virtual bool RaisesOnInteraction => true;
+
+	/// <summary>
+	/// Z-index while the node is dragged or holds focus (itself or an editor in it).
+	/// </summary>
+	protected virtual int InteractionZIndex => 100;
+
+	/// <summary>
+	/// Z-index once that ends: 99 lower, so the node stays above the ones it was moved onto.
+	/// </summary>
+	protected virtual int ReleasedZIndex => InteractionZIndex - 99;
+
+	bool _interacting;
+
+	public override void Tick()
+	{
+		base.Tick();
+
+		if ( !RaisesOnInteraction ) return;
+
+		var interacting = IsDragging || HasFocus;
+		if ( interacting == _interacting ) return;
+		_interacting = interacting;
+
+		// Render order is sibling index plus z-index, so the z-index alone loses to later nodes:
+		// go last among them too. The parent ticks a copy of its children, so reordering here is safe.
+		if ( interacting && Parent is { } parent ) parent.SetChildIndex( this, parent.ChildrenCount - 1 );
+
+		Style.ZIndex = interacting ? InteractionZIndex : ReleasedZIndex;
+	}
 
 	/// <summary>
 	/// Put the node's top left at <paramref name="position"/>, in canvas units.
@@ -153,6 +195,8 @@ public partial class NodePanel : CanvasPanel.Handle
 		{
 			if ( node.IsValid() ) node.MoveTo( (start + delta).SnapToGrid( Graph.GridSize ) );
 		}
+
+		Graph.UpdateCommentDrop();
 	}
 
 	protected override void OnDragFinish( bool cancelled )
@@ -165,6 +209,15 @@ public partial class NodePanel : CanvasPanel.Handle
 		}
 
 		_dragStart = null;
+		Graph.FinishCommentDrop( cancelled );
+	}
+
+	protected override void OnRightClick( MousePanelEvent e )
+	{
+		if ( IsPreview ) return;
+
+		Graph.OpenContextMenu( this );
+		e.StopPropagation();
 	}
 
 	void UpdatePlugs()
@@ -422,6 +475,14 @@ public partial class NodePanel : CanvasPanel.Handle
 
 	public override void OnDraw( Painter painter )
 	{
+		// Wires out of this node first, so they share its depth: over the nodes behind it, under its body
+		foreach ( var wire in PaintedWires )
+		{
+			using var scope = painter.Scope();
+			wire.Paint( painter, Position, ScaleToScreen );
+			wire.PaintHandles( painter, Position, ScaleToScreen );
+		}
+
 		var paint = new NodePaint( this, painter ) { HasMouseOver = HasHovered };
 
 		var rect = new Rect( 0f, Size );
@@ -436,7 +497,7 @@ public partial class NodePanel : CanvasPanel.Handle
 		// Selection or error glow; no depth shadow
 		if ( Selected )
 		{
-			paint.DrawShadow( rect, radius, NodeTheme.Accent.WithAlpha( 0.45f ), 10f, default, 1f );
+			paint.DrawShadow( rect, radius, Graph.SelectionColor.WithAlpha( 0.45f ), 10f, default, 1f );
 		}
 		else if ( hasError )
 		{
@@ -513,7 +574,7 @@ public partial class NodePanel : CanvasPanel.Handle
 
 		if ( Selected )
 		{
-			paint.SetPen( NodeTheme.Accent, 1.5f );
+			paint.SetPen( Graph.SelectionColor, 1.5f );
 		}
 		else if ( hasError )
 		{
@@ -521,7 +582,7 @@ public partial class NodePanel : CanvasPanel.Handle
 		}
 		else
 		{
-			paint.SetPen( paint.HasMouseOver ? NodeTheme.HairlineHover : NodeTheme.Hairline, 1f );
+			paint.SetPen( paint.HasMouseOver ? Graph.HoverBorderColor : Graph.BorderColor, 1f );
 		}
 
 		paint.DrawRect( rect, radius );

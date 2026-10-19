@@ -8,7 +8,7 @@ namespace EngineNodeGraph;
 /// </summary>
 public class Connection
 {
-	public static Color SelectedColor { get; } = NodeTheme.Accent;
+	public Color SelectedColor => Graph.SelectionColor;
 
 	public NodeGraphPanel Graph { get; }
 	public PlugOutPanel Output { get; private set; }
@@ -70,6 +70,12 @@ public class Connection
 	/// Draw order: hovered on top, then selected, then the rest.
 	/// </summary>
 	internal int Rank => Hovered ? 2 : Selected ? 1 : 0;
+
+	/// <summary>
+	/// The node that paints this wire, so the wire sits at its depth: the output's, or the input's
+	/// while a wire dragged from an input has no output yet.
+	/// </summary>
+	internal NodePanel PaintOwner => Output.IsValid() ? Output.Node : Input.IsValid() ? Input.Node : null;
 
 	readonly List<Vector2> _points = new();
 	readonly List<ConnectionHandleConfig> _handles = new();
@@ -245,9 +251,10 @@ public class Connection
 	}
 
 	/// <summary>
-	/// Draw in the graph's screen space. <paramref name="scale"/> is pixels per canvas unit.
+	/// Draw in the painting node's space: a canvas point lands at its offset from
+	/// <paramref name="origin"/> times <paramref name="scale"/>, the node's pixels per canvas unit.
 	/// </summary>
-	internal void Paint( Painter painter, float scale )
+	internal void Paint( Painter painter, Vector2 origin, float scale )
 	{
 		if ( Dragging || _points.Count < 2 ) return;
 		if ( !Output.IsValid() && !Input.IsValid() ) return;
@@ -258,14 +265,14 @@ public class Connection
 
 		for ( var i = 0; i < _points.Count; i++ )
 		{
-			_screen[i] = Graph.CanvasToScreen( _points[i] );
+			_screen[i] = (_points[i] - origin) * scale;
 		}
 
 		painter.Stroke = Stroke.Solid( color, width * WidthScale * scale );
 		painter.Line( _screen.AsSpan( 0, _points.Count ) );
 	}
 
-	internal void PaintHandles( Painter painter, float scale )
+	internal void PaintHandles( Painter painter, Vector2 origin, float scale )
 	{
 		if ( !ShowHandles ) return;
 
@@ -277,7 +284,7 @@ public class Connection
 			var active = HoveredHandle == i || DraggedHandle == i;
 
 			var size = config.Direction == DragDirection.Horizontal ? new Vector2( 8f, 12f ) : new Vector2( 12f, 8f );
-			var center = Graph.CanvasToScreen( config.GetPosition( this ) );
+			var center = (config.GetPosition( this ) - origin) * scale;
 
 			painter.Fill = active ? baseColor : baseColor.Darken( 0.2f );
 			painter.Stroke = Stroke.Solid( SelectedColor, 2f * scale );

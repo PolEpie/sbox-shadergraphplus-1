@@ -676,6 +676,16 @@ public partial class ShaderGraphPlus : IBlackboardNodeGraph, EngineNodeGraph.IGr
 		RemoveNode( (BaseNodePlus)node );
 	}
 
+	string EngineNodeGraph.IGraph.SerializeNodes( IEnumerable<EngineNodeGraph.INode> nodes )
+	{
+		return SerializeNodes( nodes.Cast<BaseNodePlus>() );
+	}
+
+	IEnumerable<EngineNodeGraph.INode> EngineNodeGraph.IGraph.DeserializeNodes( string serialized )
+	{
+		return DeserializeNodes( serialized );
+	}
+
 	void IBlackboardNodeGraph.AddParameter( IBlackboardParameter parameter )
 	{
 		AddParameter( (BlackboardParameter)parameter );

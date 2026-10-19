@@ -54,17 +54,29 @@ public partial class NodeGraphPanel : CanvasPanel
 		MinimumViewSpan = 10;
 		MaximumViewSpan = 100000;
 
-		BoxSelectionStarted += additive =>
-		{
-			_boxBase = additive ? SelectedNodes.ToHashSet() : [];
-			if ( !additive ) DeselectConnections();
-		};
-		BoxSelectionChanged += SelectInBox;
-		BoxSelectionFinished += _ => _boxBase = null;
+		// Named methods, not lambdas: hotload can't remap lambdas held by a live panel
+		BoxSelectionStarted += OnBoxSelectionStarted;
+		BoxSelectionChanged += OnBoxSelectionChanged;
+		BoxSelectionFinished += OnBoxSelectionFinished;
 		OnTooltip = BuildConnectionTooltip;
 	}
 
 	HashSet<NodePanel> _boxBase;
+
+	/// <summary>
+	/// A box selection began. Shift-dragging (<paramref name="additive"/>) keeps the current selection.
+	/// Overrides should call the base, which the rest of the gesture relies on.
+	/// </summary>
+	protected virtual void OnBoxSelectionStarted( bool additive )
+	{
+		_boxBase = additive ? SelectedNodes.ToHashSet() : [];
+		if ( !additive ) DeselectConnections();
+	}
+
+	/// <summary>
+	/// A box selection ended or was <paramref name="cancelled"/>. Overrides should call the base.
+	/// </summary>
+	protected virtual void OnBoxSelectionFinished( bool cancelled ) => _boxBase = null;
 
 	/// <summary>
 	/// Layout pixels per canvas unit; 1 at the default zoom.
@@ -80,6 +92,21 @@ public partial class NodeGraphPanel : CanvasPanel
 	/// The furthest the wheel zooms in, as a <see cref="Zoom"/>.
 	/// </summary>
 	public float MaxZoom { get; set; } = 5f;
+
+	/// <summary>
+	/// Outline and glow of selected nodes and comments, and the colour of selected wires.
+	/// </summary>
+	public Color SelectionColor { get; set; } = NodeTheme.Accent;
+
+	/// <summary>
+	/// Outline of a node under the cursor.
+	/// </summary>
+	public Color HoverBorderColor { get; set; } = NodeTheme.HairlineHover;
+
+	/// <summary>
+	/// Outline of a node that isn't selected, hovered or in error.
+	/// </summary>
+	public Color BorderColor { get; set; } = NodeTheme.Hairline;
 
 	/// <summary>
 	/// Centre the view on <paramref name="center"/> at <paramref name="zoom"/>.
@@ -112,9 +139,11 @@ public partial class NodeGraphPanel : CanvasPanel
 	}
 
 	/// <summary>
-	/// The panel for <paramref name="node"/>.
+	/// The panel for <paramref name="node"/>: a <see cref="CommentPanel"/> for comments.
 	/// </summary>
-	protected virtual NodePanel CreateNodePanel( INode node, bool isPreview = false ) => new( this, node, isPreview );
+	protected virtual NodePanel CreateNodePanel( INode node, bool isPreview = false ) => node is ICommentNode
+		? new CommentPanel( this, node, isPreview )
+		: new NodePanel( this, node, isPreview );
 
 	/// <summary>
 	/// A see-through panel for <paramref name="node"/> that isn't in the graph, such as a drop preview.
@@ -274,26 +303,35 @@ public partial class NodeGraphPanel : CanvasPanel
 
 	partial void OnDeleteSelection();
 
-	void SelectInBox( Rect box )
+	/// <summary>
+	/// The box moved, in canvas units. Any overlap selects a node. A comment needs the whole of it
+	/// inside the box, so selecting nodes in a comment doesn't drag the comment and everything in it along.
+	/// </summary>
+	protected virtual void OnBoxSelectionChanged( Rect box )
 	{
 		foreach ( var node in _nodes )
 		{
-			node.Selected = _boxBase.Contains( node ) || BoxSelects( node, box );
+			var rect = new Rect( node.Position, node.Size );
+			var inBox = node is CommentPanel ? box.IsInside( rect, true ) : rect.Overlaps( box );
+			node.Selected = _boxBase.Contains( node ) || inBox;
 		}
 
 		SelectionChanged?.Invoke();
 	}
-
-	/// <summary>
-	/// Whether a box selection over <paramref name="box"/> takes <paramref name="node"/>. Any overlap does by default.
-	/// </summary>
-	protected virtual bool BoxSelects( NodePanel node, Rect box ) => new Rect( node.Position, node.Size ).Overlaps( box );
 
 	public override void OnButtonTyped( ButtonEvent e )
 	{
 		if ( e.Button == "delete" && !IsBoxSelecting )
 		{
 			DeleteSelection();
+			e.StopPropagation = true;
+			return;
+		}
+
+		// Ctrl+C, X and V come as copy, cut and paste events; D is ours, unless a text field wants it
+		if ( e.HasCtrl && e.Button == "d" && !IsBoxSelecting && !Descendants.OfType<TextEntry>().Any( x => x.HasFocus ) )
+		{
+			DuplicateSelection();
 			e.StopPropagation = true;
 			return;
 		}
@@ -341,10 +379,10 @@ public partial class NodeGraphPanel : CanvasPanel
 		painter.Rect( viewport );
 
 		DrawGrid( painter, viewport );
-		DrawConnections( painter );
-	}
 
-	partial void DrawConnections( Painter painter );
+		// Before the nodes draw: they paint the wires laid out here
+		UpdateConnections();
+	}
 
 	static Texture _dot;
 

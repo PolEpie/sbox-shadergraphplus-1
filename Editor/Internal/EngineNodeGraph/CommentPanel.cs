@@ -1,10 +1,9 @@
 using Sandbox.UI;
-using EngineNodeGraph;
 
-namespace NodeEditorPlusTest;
+namespace EngineNodeGraph;
 
 /// <summary>
-/// A comment in a <see cref="GraphViewPanel"/>: a titled box drawn behind the nodes it holds.
+/// A comment in a <see cref="NodeGraphPanel"/>: a titled box drawn behind the nodes it holds.
 /// Moving it moves its members, and it fits itself around them. An empty comment keeps its own size.
 /// </summary>
 public class CommentPanel : NodePanel
@@ -32,7 +31,7 @@ public class CommentPanel : NodePanel
 	/// </summary>
 	Vector2? _lastPosition;
 
-	public CommentPanel( GraphViewPanel graph, INode node, bool isPreview = false ) : base( graph, node, isPreview )
+	public CommentPanel( NodeGraphPanel graph, INode node, bool isPreview = false ) : base( graph, node, isPreview )
 	{
 		AddClass( "comment" );
 	}
@@ -46,7 +45,19 @@ public class CommentPanel : NodePanel
 		base.OnParentChanged();
 
 		if ( Parent is { } parent ) parent.SetChildIndex( this, 0 );
+		_ordered = false;
 	}
+
+	/// <summary>
+	/// Comments stay behind the nodes even while dragged or focused.
+	/// </summary>
+	protected override bool RaisesOnInteraction => false;
+
+	/// <summary>
+	/// Whether nested comments have been put in order since this one was added - not possible
+	/// until the graph knows every comment, so it happens on the first tick.
+	/// </summary>
+	bool _ordered;
 
 	/// <summary>
 	/// The panels of this comment's members.
@@ -64,6 +75,12 @@ public class CommentPanel : NodePanel
 		base.Tick();
 
 		if ( IsPreview ) return;
+
+		if ( !_ordered )
+		{
+			_ordered = true;
+			Graph.OrderComments();
+		}
 
 		ForgetRemovedMembers();
 
@@ -158,7 +175,7 @@ public class CommentPanel : NodePanel
 
 		// Body, a faint tint of the comment colour
 		paint.SetBrush( color.WithAlpha( 0.08f ) );
-		paint.SetPen( Selected ? NodeTheme.Accent : color.WithAlpha( IsDropTarget ? 0.9f : HasHovered ? 0.6f : 0.35f ), Selected || IsDropTarget ? 2f : 1f );
+		paint.SetPen( Selected ? Graph.SelectionColor : color.WithAlpha( IsDropTarget ? 0.9f : HasHovered ? 0.6f : 0.35f ), Selected || IsDropTarget ? 2f : 1f );
 		paint.DrawRect( rect, radius );
 
 		// Header, rounded on top only. Opaque, so the square patch over its bottom corners doesn't

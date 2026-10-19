@@ -25,25 +25,137 @@ public class GraphViewPanel : NodeGraphPanel
 	/// </summary>
 	private int _dragDepth;
 	private bool _hasDropped;
-	private CommentPanel _dropTarget;
 	private NodePanel _dropPreview;
 
-	private Sandbox.UI.Menu _menu;
-
+	/// <summary>
+	/// The comment node to create from the right-click menu. Null for a graph without comments.
+	/// </summary>
 	protected virtual INodeType CommentNodeType { get; }
 	protected virtual INodeType RerouteNodeType { get; }
-
-	public IEnumerable<CommentPanel> Comments => Nodes.OfType<CommentPanel>();
 
 	public GraphViewPanel() : base()
 	{
 		AddClass( ShaderGraphPlusCssClasses.EditorDockPane );
 		AddClass( "sg-graph" );
+
+		// Derived initializers have run, so an overridden CommentNodeType is already set
+		if ( CommentNodeType is not null ) CommentFactory = CreateCommentNode;
+
+		PlugDroppedOnEmpty += OpenPlugMenu;
 	}
+
+	EngineNodeGraph.ICommentNode CreateCommentNode() => CommentNodeType.CreateNode( Graph ) as EngineNodeGraph.ICommentNode;
+
+	/// <summary>
+	/// Most results a filtered node list shows, like the Qt editor's.
+	/// </summary>
+	const int MaxFilteredResults = 20;
 
 	protected virtual IEnumerable<INodeType> GetRelevantNodes( NodeQuery query )
 	{
 		return Enumerable.Empty<INodeType>();
+	}
+
+	/// <summary>
+	/// The editor can read the clipboard, so empty space offers to paste.
+	/// </summary>
+	protected override string ReadClipboard() => Editor.EditorUtility.Clipboard.Paste();
+
+	/// <summary>
+	/// Empty space also lists every node to create, like the Qt editor.
+	/// </summary>
+	protected override void BuildContextMenu( Sandbox.UI.Menu menu, NodePanel node, Vector2 position )
+	{
+		base.BuildContextMenu( menu, node, position );
+
+		if ( node is not null || Graph is null ) return;
+
+		if ( menu.HasOptions ) menu.AddSeparator();
+		AddNodeOptions( menu.AddMenu( "Create Node", "add_box" ), position, null );
+	}
+
+	/// <summary>
+	/// A wire dropped on nothing offers the nodes that can take it, wired up once created.
+	/// </summary>
+	void OpenPlugMenu( PlugPanel plug, Vector2 position )
+	{
+		if ( Graph is null ) return;
+
+		OpenMenu( menu =>
+		{
+			if ( RerouteNodeType is not null )
+			{
+				menu.AddOption( "Add Reroute", "route", () => CreateNewNode( RerouteNodeType, position, plug ) );
+				menu.AddSeparator();
+			}
+
+			AddNodeOptions( menu, position, plug );
+		} );
+	}
+
+	/// <summary>
+	/// A filter box, then the nodes <see cref="GetRelevantNodes"/> offers for <paramref name="plug"/>:
+	/// in their categories, or the best matches flat while filtering.
+	/// </summary>
+	void AddNodeOptions( Sandbox.UI.Menu menu, Vector2 position, PlugPanel plug )
+	{
+		var results = new List<Panel>();
+		var filter = menu.AddWidget( new TextEntry { Placeholder = "Filter Nodes.." } );
+
+		void Fill( string text )
+		{
+			foreach ( var row in results )
+			{
+				menu.Remove( row );
+				row.Delete( true );
+			}
+
+			results.Clear();
+
+			var query = new NodeQuery( Graph, plug?.Inner as IPlug, text );
+			var types = GetRelevantNodes( query ).ToArray();
+
+			if ( query.Filter.Count > 0 )
+			{
+				foreach ( var type in types.OrderByDescending( x => x.GetScore( query ) ?? 0 ).Take( MaxFilteredResults ) )
+				{
+					var name = string.Join( " → ", type.Path.Where( x => !x.IsHeading ).Select( x => x.Name ) );
+					results.Add( menu.AddOption( name, type.Path[^1].Icon, () => CreateNewNode( type, position, plug ) ) );
+				}
+
+				if ( types.Length > MaxFilteredResults )
+				{
+					results.Add( menu.AddWidget( new Label( $"... and {types.Length - MaxFilteredResults} more" ) ) );
+				}
+
+				return;
+			}
+
+			foreach ( var type in types.OrderBy( x => string.Join( "/", x.Path.Select( p => p.Name ) ), StringComparer.OrdinalIgnoreCase ) )
+			{
+				var parent = menu;
+
+				foreach ( var part in type.Path[..^1] )
+				{
+					if ( part.IsHeading ) continue;
+
+					if ( parent.FindOption( part.Name ) is not { } submenu )
+					{
+						submenu = parent.AddMenu( part.Name, part.Icon );
+						if ( parent == menu ) results.Add( submenu );
+					}
+
+					parent = submenu;
+				}
+
+				var option = parent.AddOption( type.Path[^1].Name, type.Path[^1].Icon, () => CreateNewNode( type, position, plug ) );
+				if ( parent == menu ) results.Add( option );
+			}
+		}
+
+		filter.OnTextEdited = Fill;
+		menu.AboutToShow += _ => filter.Focus();
+		Fill( null );
 	}
 
 	public NodePanel CreateNewNode( INodeType type, Vector2 position )
@@ -61,150 +173,28 @@ public class GraphViewPanel : NodeGraphPanel
 		return AddNode( (INode)node );
 	}
 
-	protected override NodePanel CreateNodePanel( INode node, bool isPreview = false )
+	/// <summary>
+	/// Add a node of <paramref name="type"/> at <paramref name="position"/> and select it. With
+	/// <paramref name="plug"/>, wire the new node's matching plug to it, like the Qt editor.
+	/// </summary>
+	public NodePanel CreateNewNode( INodeType type, Vector2 position, PlugPanel plug )
 	{
-		if ( node is ICommentNode )
-		{
-			return new CommentPanel( this, node, isPreview );
-		}
-		else
-		{
-			return new GraphNodePanel( this, node, isPreview );
-		}
-	}
+		if ( CreateNewNode( type, position ) is not { } panel ) return null;
 
-	protected override bool BoxSelects( NodePanel nodePanel, Rect box )
-	{
-		if ( nodePanel is CommentPanel )
-		{
-			return box.IsInside( new Rect( nodePanel.Position, nodePanel.Size ), true );
-		}
-
-		return base.BoxSelects( nodePanel, box );
-	}
-
-	private IEnumerable<NodePanel> FreeSelectedNodes() => SelectedNodes.Where( x => x is not CommentPanel && FindComment( x ) is null );
-
-	public CommentPanel FindComment( NodePanel node )
-	{
-		if ( node is CommentPanel ) return null;
-
-		return Comments.FirstOrDefault( x => x.Comment.Members?.Contains( node.Node.Identifier ) ?? false );
-	}
-
-	public CommentPanel CreateComment( Vector2 position, IReadOnlyList<NodePanel> members )
-	{
-		if ( Graph is null || CommentNodeType?.CreateNode( Graph as INodeGraph ) is not INode node || node is not ICommentNode comment )
-			return null;
-
-		node.Position = position;
-		comment.Size = new( 300f, 192f );
-		comment.Members ??= new();
-
-		RemoveFromComment( members );
-		comment.Members.AddRange( members.Where( x => x is not CommentPanel ).Select( x => x.Node.Identifier ) );
-
-		var panel = AddNode( node );
 		SelectNode( panel );
 
-		return panel as CommentPanel;
-	}
-
-	public void AddToComment( CommentPanel comment, IEnumerable<NodePanel> nodes )
-	{
-		var members = comment.Comment.Members ??= new();
-
-		foreach ( var node in nodes.ToArray() )
+		switch ( plug )
 		{
-			if ( node is CommentPanel ) continue;
+			case PlugInPanel input when type.TryGetOutput( input.Inner.Type, out var name ) && panel.Outputs.FirstOrDefault( x => x.Inner.Identifier == name ) is { } output:
+				Connect( output, input );
+				break;
 
-			FindComment( node )?.Comment.Members.Remove( node.Node.Identifier );
-			members.Add( node.Node.Identifier );
+			case PlugOutPanel output when type.TryGetInput( output.Inner.Type, out var name ) && panel.Inputs.FirstOrDefault( x => x.Inner.Identifier == name ) is { } input:
+				Connect( output, input );
+				break;
 		}
-	}
 
-	public void RemoveFromComment( IEnumerable<NodePanel> nodes )
-	{
-		foreach ( var node in nodes.ToArray() )
-		{
-			FindComment( node )?.Comment.Members.Remove( node.Node.Identifier );
-		}
-	}
-
-	internal void UpdateCommentDrop()
-	{
-		var mouse = ScreenToCanvas( MousePosition );
-		var target = FreeSelectedNodes().Any()
-			? Comments.Where( x => !x.Selected && new Rect( x.Position, x.Size ).IsInside( mouse ) ).MinBy( x => x.Size.x * x.Size.y )
-			: null;
-
-		if ( target == _dropTarget ) return;
-
-		if ( _dropTarget.IsValid() ) _dropTarget.IsDropTarget = false;
-		_dropTarget = target;
-		if ( target is not null ) target.IsDropTarget = true;
-	}
-
-	internal void FinishCommentDrop( bool cancelled )
-	{
-		var target = _dropTarget;
-		_dropTarget = null;
-
-		if ( !target.IsValid() ) return;
-
-		target.IsDropTarget = false;
-		if ( !cancelled ) AddToComment( target, FreeSelectedNodes() );
-	}
-
-	private void AddCommentOptions( Sandbox.UI.Menu menu, Vector2 position )
-	{
-		if ( CommentNodeType is null ) return;
-
-		var selected = SelectedNodes.Where( x => x is not CommentPanel ).ToArray();
-
-		menu.AddOption( "Add Comment", "notes", () => CreateComment( position, [] ) );
-
-		if ( selected.Length > 0 )
-		{
-			menu.AddOption( $"Add Comment for {selected.Length} {(selected.Length == 1 ? "node" : "nodes")}", "notes", () => CreateComment( position, selected ) );
-		}
-	}
-
-	private void OpenMenu( Action<Sandbox.UI.Menu> build )
-	{
-		_menu?.Delete( true );
-
-		var menu = _menu = new Sandbox.UI.Menu();
-		build( menu );
-
-		menu.Closed += _ =>
-		{
-			if ( _menu == menu ) _menu = null;
-			menu.Delete( true );
-		};
-
-		menu.Open( this, Sandbox.UI.Popup.PositionMode.UnderMouse );
-	}
-
-	/// <summary>
-	/// Right-clicking a node selects it, then offers to take the selection out of its comment.
-	/// </summary>
-	internal void OpenNodeMenu( NodePanel node )
-	{
-		if ( !node.Selected ) SelectNode( node );
-
-		var position = ScreenToCanvas( MousePosition );
-		var members = SelectedNodes.Where( x => FindComment( x ) is not null ).ToArray();
-
-		OpenMenu( menu =>
-		{
-			if ( members.Length > 0 )
-			{
-				menu.AddOption( "Remove from comment", "playlist_remove", () => RemoveFromComment( members ) );
-			}
-
-			AddCommentOptions( menu, position );
-		} );
+		return panel;
 	}
 
 	public override void Tick()
@@ -311,15 +301,6 @@ public class GraphViewPanel : NodeGraphPanel
 	protected virtual void OnDragDropFinish()
 	{
 
-	}
-
-	protected override void OnRightClick( MousePanelEvent e )
-	{
-		if ( CommentNodeType is null || Graph is null ) return;
-
-		var position = ScreenToCanvas( MousePosition );
-		OpenMenu( menu => AddCommentOptions( menu, position ) );
-		e.StopPropagation();
 	}
 
 	protected void ClearDropPreview()

@@ -13,6 +13,18 @@ public interface IGraph
 
 	void AddNode( INode node );
 	void RemoveNode( INode node );
+
+	/// <summary>
+	/// <paramref name="nodes"/> as text, for copy and paste. Null when this graph can't copy nodes.
+	/// </summary>
+	string SerializeNodes( IEnumerable<INode> nodes ) => null;
+
+	/// <summary>
+	/// Create the nodes in <paramref name="serialized"/>, from <see cref="SerializeNodes"/>, add them
+	/// to the graph and return them. Give them new identifiers where they clash with nodes already
+	/// here, and keep the connections between them.
+	/// </summary>
+	IEnumerable<INode> DeserializeNodes( string serialized ) => [];
 }
 
 /// <summary>
@@ -65,6 +77,32 @@ public interface INode
 	/// Draw over the node after its body and title. <paramref name="rect"/> is the whole node, in node units.
 	/// </summary>
 	void OnPaint<T>( T paint, Rect rect ) where T : INodePaint, allows ref struct { }
+}
+
+/// <summary>
+/// A comment: a titled box drawn behind the nodes it holds. Its members move with it and it fits
+/// itself around them. Nodes join by being dropped inside it and leave through its right-click menu.
+/// </summary>
+public interface ICommentNode : INode
+{
+	string Title { get; }
+	string Description => null;
+	Color Color { get; }
+
+	/// <summary>
+	/// In points, like the editor's comments.
+	/// </summary>
+	int DescriptionFontSize => 11;
+
+	/// <summary>
+	/// In canvas units. Kept while the comment holds nothing; written back as it fits its members.
+	/// </summary>
+	Vector2 Size { get; set; }
+
+	/// <summary>
+	/// Identifiers of the nodes this comment holds.
+	/// </summary>
+	List<string> Members { get; }
 }
 
 /// <summary>

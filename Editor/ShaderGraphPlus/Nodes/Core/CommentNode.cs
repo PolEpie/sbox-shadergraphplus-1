@@ -2,8 +2,12 @@
 
 namespace ShaderGraphPlus;
 
+/// <summary>
+/// A comment for both editors: <see cref="ICommentNode"/> is the Qt graph's, <see cref="EngineNodeGraph.ICommentNode"/>
+/// the panel graph's. Their members line up, so one set of properties serves both.
+/// </summary>
 [Icon( "notes" ), Hide]
-public class CommentNode : BaseNodePlus, ICommentNode
+public class CommentNode : BaseNodePlus, ICommentNode, EngineNodeGraph.ICommentNode
 {
 	[Hide, Browsable( false )]
 	public Vector2 Size { get; set; }
