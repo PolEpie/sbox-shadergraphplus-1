@@ -678,6 +678,16 @@ internal sealed class ParameterRow : Panel
 	/// </summary>
 	internal void SetSelected( bool selected ) => SetClass( "selected", selected );
 
+	/// <summary>
+	/// Dragged onto the graph, the row becomes a node for its parameter.
+	/// </summary>
+	public override bool WantsDrag => true;
+
+	/// <summary>
+	/// The drag is ours, not a scroll of the list.
+	/// </summary>
+	protected override void OnDrag( DragEvent e ) => e.StopPropagation();
+
 	protected override void OnMouseDown( MousePanelEvent e )
 	{
 		base.OnMouseDown( e );

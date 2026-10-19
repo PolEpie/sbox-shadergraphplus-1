@@ -44,6 +44,20 @@ public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 	/// </summary>
 	protected override bool CanCopy( EngineNodeGraph.NodePanel node ) => base.CanCopy( node ) && node.Node is not IBlackboardNode;
 
+	/// <summary>
+	/// Blackboard parameters drag in as nodes too.
+	/// </summary>
+	protected override bool AcceptsDrag( Panel source ) => source is ParameterRow || base.AcceptsDrag( source );
+
+	protected override EngineNodeGraph.INode CreateDroppedNode( PanelEvent e )
+	{
+		if ( e.Target is not ParameterRow row ) return base.CreateDroppedNode( e );
+
+		var node = (BaseNodePlus)row.Parameter.ToNode();
+		node.Graph = Graph;
+		return node;
+	}
+
 	public ShaderGraphPlusViewPanel( BlackboardPanel blackboard ) : base()
 	{
 		SGPLogger.Info( $"TODO : ShaderGraphPlusViewPanel Constructor" );
@@ -87,11 +101,14 @@ public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 	}
 
 	/// <summary>
-	/// Nodes refresh their plugs in OnFrame, which the Qt view calls every frame too.
+	/// Nodes refresh their plugs in OnFrame, which the Qt view calls every frame too. Nodes reading
+	/// the parameter picked in the blackboard are highlighted, so they're easy to spot.
 	/// </summary>
 	public override void Tick()
 	{
 		base.Tick();
+
+		var parameter = _blackboard?.Selected?.Identifier;
 
 		foreach ( var node in Nodes )
 		{
@@ -99,6 +116,8 @@ public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 			{
 				baseNode.OnFrame();
 			}
+
+			node.Highlighted = parameter is { } id && node.Node is IBlackboardNode blackboardNode && blackboardNode.ParameterIdentifier == id;
 		}
 	}
 

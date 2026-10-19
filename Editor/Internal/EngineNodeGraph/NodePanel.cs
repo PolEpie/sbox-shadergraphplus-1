@@ -48,6 +48,12 @@ public partial class NodePanel : CanvasPanel.Handle
 
 	bool _selected;
 
+	/// <summary>
+	/// Outlined and glowing in <see cref="NodeGraphPanel.HighlightColor"/> to point the node out -
+	/// such as everything reading what's picked elsewhere. Selection shows over it.
+	/// </summary>
+	public bool Highlighted { get; set; }
+
 	public List<PlugInPanel> Inputs = new();
 	public List<PlugOutPanel> Outputs = new();
 
@@ -494,10 +500,14 @@ public partial class NodePanel : CanvasPanel.Handle
 		var hasError = !string.IsNullOrWhiteSpace( Node.ErrorMessage );
 		var body = BodyColor;
 
-		// Selection or error glow; no depth shadow
+		// Selection, highlight or error glow; no depth shadow
 		if ( Selected )
 		{
 			paint.DrawShadow( rect, radius, Graph.SelectionColor.WithAlpha( 0.45f ), 10f, default, 1f );
+		}
+		else if ( Highlighted )
+		{
+			paint.DrawShadow( rect, radius, Graph.HighlightColor.WithAlpha( 0.55f ), 12f, default, 2f );
 		}
 		else if ( hasError )
 		{
@@ -575,6 +585,10 @@ public partial class NodePanel : CanvasPanel.Handle
 		if ( Selected )
 		{
 			paint.SetPen( Graph.SelectionColor, 1.5f );
+		}
+		else if ( Highlighted )
+		{
+			paint.SetPen( Graph.HighlightColor, 2f );
 		}
 		else if ( hasError )
 		{
