@@ -1,3 +1,4 @@
+using ControlSheet = EngineControlSheet.ControlSheet;
 using Sandbox.UI;
 using Sandbox.UI.Construct;
 using ShaderGraphPlus;
@@ -5,8 +6,8 @@ using ShaderGraphPlus;
 namespace ShaderGraphPlusPanelTest;
 
 /// <summary>
-/// Edits whatever is selected - the graph, a node or a blackboard parameter - with the engine's
-/// <see cref="ControlSheet"/>, like the Qt Properties widget.
+/// Edits whatever is selected - the graph, a node or a blackboard parameter - with the local copy of the
+/// engine's <see cref="ControlSheet"/> (<c>Editor/Internal/EngineControlSheet</c>), like the Qt Properties widget.
 /// </summary>
 public sealed class PropertiesPanel : Panel
 {
