@@ -10,6 +10,17 @@ namespace ShaderGraphPlusPanelTest;
 
 public sealed class ShaderGraphPlusViewPanel : GraphViewPanel
 {
+	public new ShaderGraphPlus.ShaderGraphPlus Graph
+	{
+		get => (ShaderGraphPlus.ShaderGraphPlus)base.Graph;
+		set
+		{
+			if ( base.Graph == value ) return;
+
+			base.Graph = value;
+		}
+	}
+
 	private readonly Dictionary<string, INodeType> AvailableNodes = new( StringComparer.OrdinalIgnoreCase );
 	private readonly Dictionary<string, IBlackboardParameterType> AvailableParameters = new( StringComparer.OrdinalIgnoreCase );
 

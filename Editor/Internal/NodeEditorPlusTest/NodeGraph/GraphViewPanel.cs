@@ -6,26 +6,35 @@ using ShaderGraphPlusPanelTest;
 
 namespace NodeEditorPlusTest;
 
-/// <summary>
-/// The engine <see cref="NodeGraphPanel"/> plus palette drag and drop: rows dropped here become
-/// nodes at the cursor, with a see-through preview while dragging. Also hosts comments: nodes
-/// dropped inside one join it, and only its right-click menu takes them out again.
-/// </summary>
 public class GraphViewPanel : NodeGraphPanel
 {
-	/// <summary>
-	/// See-through card showing where the dragged palette node will land.
-	/// </summary>
-	private NodePanel _dropPreview;
+
+	public new INodeGraph Graph
+	{
+		get => (INodeGraph)base.Graph;
+		set
+		{
+			if ( base.Graph == value ) return;
+
+			base.Graph = (IGraph)value;
+		}
+	}
 
 	/// <summary>
 	/// Palette drag enter/leave count. Events bubble up from cards in any order, so the drag only
 	/// left the view when this is 0 in <see cref="Tick"/>.
 	/// </summary>
 	private int _dragDepth;
-
-	public bool HasDropped => _hasDropped;
 	private bool _hasDropped;
+	private CommentPanel _dropTarget;
+	private NodePanel _dropPreview;
+
+	private Sandbox.UI.Menu _menu;
+
+	protected virtual INodeType CommentNodeType { get; }
+	protected virtual INodeType RerouteNodeType { get; }
+
+	public IEnumerable<CommentPanel> Comments => Nodes.OfType<CommentPanel>();
 
 	public GraphViewPanel() : base()
 	{
@@ -33,31 +42,49 @@ public class GraphViewPanel : NodeGraphPanel
 		AddClass( "sg-graph" );
 	}
 
+	protected virtual IEnumerable<INodeType> GetRelevantNodes( NodeQuery query )
+	{
+		return Enumerable.Empty<INodeType>();
+	}
 
 	public NodePanel CreateNewNode( INodeType type, Vector2 position )
 	{
 		if ( type is null || Graph is null )
 			return null;
 
-		if ( type.CreateNode( Graph as INodeGraph ) is not INode node )
+		var node = type.CreateNode( Graph );
+
+		if ( node is null )
 			return null;
 
 		node.Position = position;
 
-		return AddNode( node );
+		return AddNode( (INode)node );
 	}
 
-	protected virtual INodeType CommentNodeType { get; }
+	protected override NodePanel CreateNodePanel( INode node, bool isPreview = false )
+	{
+		if ( node is ICommentNode )
+		{
+			return new CommentPanel( this, node, isPreview );
+		}
+		else
+		{
+			return new GraphNodePanel( this, node, isPreview );
+		}
+	}
 
-	protected virtual INodeType RerouteNodeType { get; }
+	protected override bool BoxSelects( NodePanel nodePanel, Rect box )
+	{
+		if ( nodePanel is CommentPanel )
+		{
+			return box.IsInside( new Rect( nodePanel.Position, nodePanel.Size ), true );
+		}
 
-	static readonly Vector2 DefaultCommentSize = new( 300f, 192f );
+		return base.BoxSelects( nodePanel, box );
+	}
 
-	protected override NodePanel CreateNodePanel( INode node, bool isPreview = false ) => node is ICommentNode
-		? new CommentPanel( this, node, isPreview )
-		: new GraphNodePanel( this, node, isPreview );
-
-	public IEnumerable<CommentPanel> Comments => Nodes.OfType<CommentPanel>();
+	private IEnumerable<NodePanel> FreeSelectedNodes() => SelectedNodes.Where( x => x is not CommentPanel && FindComment( x ) is null );
 
 	public CommentPanel FindComment( NodePanel node )
 	{
@@ -72,7 +99,7 @@ public class GraphViewPanel : NodeGraphPanel
 			return null;
 
 		node.Position = position;
-		comment.Size = DefaultCommentSize;
+		comment.Size = new( 300f, 192f );
 		comment.Members ??= new();
 
 		RemoveFromComment( members );
@@ -105,20 +132,6 @@ public class GraphViewPanel : NodeGraphPanel
 		}
 	}
 
-	protected override bool BoxSelects( NodePanel nodePanel, Rect box )
-	{
-		if ( nodePanel is CommentPanel )
-		{
-			return box.IsInside( new Rect( nodePanel.Position, nodePanel.Size ), true );
-		}
-
-		return base.BoxSelects( nodePanel, box );
-	}
-
-	CommentPanel _dropTarget;
-
-	IEnumerable<NodePanel> FreeSelectedNodes() => SelectedNodes.Where( x => x is not CommentPanel && FindComment( x ) is null );
-
 	internal void UpdateCommentDrop()
 	{
 		var mouse = ScreenToCanvas( MousePosition );
@@ -144,9 +157,21 @@ public class GraphViewPanel : NodeGraphPanel
 		if ( !cancelled ) AddToComment( target, FreeSelectedNodes() );
 	}
 
-	Sandbox.UI.Menu _menu;
+	private void AddCommentOptions( Sandbox.UI.Menu menu, Vector2 position )
+	{
+		if ( CommentNodeType is null ) return;
 
-	void OpenMenu( Action<Sandbox.UI.Menu> build )
+		var selected = SelectedNodes.Where( x => x is not CommentPanel ).ToArray();
+
+		menu.AddOption( "Add Comment", "notes", () => CreateComment( position, [] ) );
+
+		if ( selected.Length > 0 )
+		{
+			menu.AddOption( $"Add Comment for {selected.Length} {(selected.Length == 1 ? "node" : "nodes")}", "notes", () => CreateComment( position, selected ) );
+		}
+	}
+
+	private void OpenMenu( Action<Sandbox.UI.Menu> build )
 	{
 		_menu?.Delete( true );
 
@@ -160,20 +185,6 @@ public class GraphViewPanel : NodeGraphPanel
 		};
 
 		menu.Open( this, Sandbox.UI.Popup.PositionMode.UnderMouse );
-	}
-
-	void AddCommentOptions( Sandbox.UI.Menu menu, Vector2 position )
-	{
-		if ( CommentNodeType is null ) return;
-
-		var selected = SelectedNodes.Where( x => x is not CommentPanel ).ToArray();
-
-		menu.AddOption( "Add Comment", "notes", () => CreateComment( position, [] ) );
-
-		if ( selected.Length > 0 )
-		{
-			menu.AddOption( $"Add Comment for {selected.Length} {(selected.Length == 1 ? "node" : "nodes")}", "notes", () => CreateComment( position, selected ) );
-		}
 	}
 
 	/// <summary>
@@ -195,15 +206,6 @@ public class GraphViewPanel : NodeGraphPanel
 
 			AddCommentOptions( menu, position );
 		} );
-	}
-
-	protected override void OnRightClick( MousePanelEvent e )
-	{
-		if ( CommentNodeType is null || Graph is null ) return;
-
-		var position = ScreenToCanvas( MousePosition );
-		OpenMenu( menu => AddCommentOptions( menu, position ) );
-		e.StopPropagation();
 	}
 
 	public override void Tick()
@@ -310,6 +312,15 @@ public class GraphViewPanel : NodeGraphPanel
 	protected virtual void OnDragDropFinish()
 	{
 
+	}
+
+	protected override void OnRightClick( MousePanelEvent e )
+	{
+		if ( CommentNodeType is null || Graph is null ) return;
+
+		var position = ScreenToCanvas( MousePosition );
+		OpenMenu( menu => AddCommentOptions( menu, position ) );
+		e.StopPropagation();
 	}
 
 	protected void ClearDropPreview()
