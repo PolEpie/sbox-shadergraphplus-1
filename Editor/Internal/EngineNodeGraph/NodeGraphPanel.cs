@@ -54,17 +54,29 @@ public partial class NodeGraphPanel : CanvasPanel
 		MinimumViewSpan = 10;
 		MaximumViewSpan = 100000;
 
-		BoxSelectionStarted += additive =>
-		{
-			_boxBase = additive ? SelectedNodes.ToHashSet() : [];
-			if ( !additive ) DeselectConnections();
-		};
-		BoxSelectionChanged += SelectInBox;
-		BoxSelectionFinished += _ => _boxBase = null;
+		// Named methods, not lambdas: hotload can't remap lambdas held by a live panel
+		BoxSelectionStarted += OnBoxSelectionStarted;
+		BoxSelectionChanged += OnBoxSelectionChanged;
+		BoxSelectionFinished += OnBoxSelectionFinished;
 		OnTooltip = BuildConnectionTooltip;
 	}
 
 	HashSet<NodePanel> _boxBase;
+
+	/// <summary>
+	/// A box selection began. Shift-dragging (<paramref name="additive"/>) keeps the current selection.
+	/// Overrides should call the base, which the rest of the gesture relies on.
+	/// </summary>
+	protected virtual void OnBoxSelectionStarted( bool additive )
+	{
+		_boxBase = additive ? SelectedNodes.ToHashSet() : [];
+		if ( !additive ) DeselectConnections();
+	}
+
+	/// <summary>
+	/// A box selection ended or was <paramref name="cancelled"/>. Overrides should call the base.
+	/// </summary>
+	protected virtual void OnBoxSelectionFinished( bool cancelled ) => _boxBase = null;
 
 	/// <summary>
 	/// Layout pixels per canvas unit; 1 at the default zoom.
@@ -289,7 +301,11 @@ public partial class NodeGraphPanel : CanvasPanel
 
 	partial void OnDeleteSelection();
 
-	void SelectInBox( Rect box )
+	/// <summary>
+	/// The box moved, in canvas units: select what <see cref="BoxSelects"/> takes, plus what was
+	/// selected before an additive box.
+	/// </summary>
+	protected virtual void OnBoxSelectionChanged( Rect box )
 	{
 		foreach ( var node in _nodes )
 		{
