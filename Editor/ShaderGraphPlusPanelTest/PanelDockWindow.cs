@@ -31,6 +31,8 @@ public class PanelDockWindow : Panel
 
 		StyleSheet.Load( ShaderGraphPlusStyleSheets.EditorScss );
 		StyleSheet.Load( ShaderGraphPlusStyleSheets.GalleryScss );
+
+		EditorEvent.Register( this );
 	}
 
 	protected virtual void CreateUI()
