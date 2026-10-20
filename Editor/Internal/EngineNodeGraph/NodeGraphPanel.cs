@@ -48,6 +48,11 @@ public partial class NodeGraphPanel : CanvasPanel
 	/// </summary>
 	public event Action SelectionChanged;
 
+	/// <summary>
+	/// When a node value changes. Primarly via a <seealso cref="NodeValueEditor"/>
+	/// </summary>
+	public event Action OnNodeValueChanged;
+
 	bool _viewInitialized;
 
 	public NodeGraphPanel()
@@ -171,6 +176,14 @@ public partial class NodeGraphPanel : CanvasPanel
 		}
 
 		return comment;
+	}
+
+	/// <summary>
+	/// When a node value changes. Primarly via a <seealso cref="NodeValueEditor"/>
+	/// </summary>
+	public virtual void NodeValueChanged()
+	{
+		OnNodeValueChanged?.Invoke();
 	}
 
 	Vector2 MouseCanvas => ScreenToCanvas( MousePosition );

@@ -97,6 +97,7 @@ public class GradientValueEditorUI : EngineGraph.NodeValueEditor
 		{
 			Value = v;
 			ValueProperty.SetValue( v );
+			Plug.Node.Graph.NodeValueChanged();
 			Plug.Node.MarkNodeChanged();
 		} );
 

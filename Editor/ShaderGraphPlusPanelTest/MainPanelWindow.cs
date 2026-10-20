@@ -209,6 +209,7 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 		_graphView.Graph = _graph;
 		_graphView.OnPushUndo = PushUndo;
 		_graphView.OnPushRedo = PushRedo;
+		_graphView.OnNodeValueChanged += () => SetDirty();
 		_graphView.SelectionChanged += () =>
 		{
 			// Nothing, or several, selected shows the graph, like the Qt editor
@@ -949,6 +950,7 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 		}
 		if ( wasDirty )
 		{
+			_graphView.NodeValueChanged();
 		}
 	}
 

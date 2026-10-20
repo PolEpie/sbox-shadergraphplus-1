@@ -205,6 +205,7 @@ public class IntValueEditorUI : EngineGraph.NodeValueEditor
 	private void Commit()
 	{
 		ValueProperty?.SetValue( (int)MathF.Round( Value ) );
+		Plug.Node.Graph.NodeValueChanged();
 		Plug.Node.MarkNodeChanged();
 	}
 }
