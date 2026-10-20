@@ -27,12 +27,12 @@ public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 		}
 	}
 
-	private readonly Dictionary<string, INodeType> AvailableNodes = new( StringComparer.OrdinalIgnoreCase );
+	private readonly Dictionary<string, PanelNodeType> AvailableNodes = new( StringComparer.OrdinalIgnoreCase );
 
 
-	protected override INodeType CommentNodeType { get; } = new ClassNodeType( EditorTypeLibrary.GetType<CommentNode>() );
+	protected override EngineNodeGraph.INodeType CommentNodeType { get; } = new PanelNodeType( new ClassNodeType( EditorTypeLibrary.GetType<CommentNode>() ) );
 
-	protected override INodeType RerouteNodeType { get; } = new ClassNodeType( EditorTypeLibrary.GetType<ReroutePlus>() );
+	protected override EngineNodeGraph.INodeType RerouteNodeType { get; } = new PanelNodeType( new ClassNodeType( EditorTypeLibrary.GetType<ReroutePlus>() ) );
 
 	/// <summary>
 	/// Same as the Qt editor's, so nodes copied in one paste into the other.
@@ -70,10 +70,6 @@ public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 		_blackboard.OnSelected += OnParameterSelected;
 		SelectionChanged += OnGraphSelectionChanged;
 
-		// Derived initializers have run, so an overridden CommentNodeType is already set
-		if ( CommentNodeType is not null ) CommentFactory = CreateCommentNode;
-
-		PlugDroppedOnEmpty += BuildConnectionDropContextMenu;
 	}
 
 	bool _pickingParameter;
@@ -95,8 +91,6 @@ public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 	{
 		if ( !_pickingParameter ) _blackboard?.Select( null );
 	}
-
-	EngineNodeGraph.ICommentNode CreateCommentNode() => CommentNodeType.CreateNode( Graph ) as EngineNodeGraph.ICommentNode;
 
 	/// <summary>
 	/// Each input <paramref name="node"/> feeds, with the output feeding it.
@@ -144,7 +138,7 @@ public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 
 	public void AddNodeType( TypeDescription type )
 	{
-		var nodeType = new ClassNodeType( type );
+		var nodeType = new PanelNodeType( new ClassNodeType( type ) );
 
 		AvailableNodes.TryAdd( nodeType.Identifier, nodeType );
 	}
@@ -156,19 +150,19 @@ public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 		if ( !subgraph.AddToNodeLibrary ) return;
 		var nodeType = new SubgraphNodeType( subgraphPath, EditorTypeLibrary.GetType<SubgraphNode>() );
 		nodeType.SetDisplayInfo( subgraph );
-		AvailableNodes.TryAdd( nodeType.Identifier, nodeType );
+		AvailableNodes.TryAdd( nodeType.Identifier, new PanelNodeType( nodeType ) );
 	}
 
-	public INodeType FindNodeType( Type type )
+	public EngineNodeGraph.INodeType FindNodeType( Type type )
 	{
 		return AvailableNodes.TryGetValue( type.FullName!, out var nodeType ) ? nodeType : null;
 	}
 
-	protected override IEnumerable<INodeType> GetRelevantNodes( NodeQuery query )
+	protected override IEnumerable<EngineNodeGraph.INodeType> GetRelevantNodes( EngineNodeGraph.NodeQuery query )
 	{
 		return AvailableNodes.Values.Filter( query ).Where( x =>
 		{
-			if ( x is ClassNodeType classNodeType )
+			if ( x is PanelNodeType { Inner: var classNodeType } )
 			{
 				var targetType = classNodeType.Type.TargetType;
 				if ( classNodeType.Type.HasAttribute<HideAttribute>() ) return false;
@@ -194,7 +188,7 @@ public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 		return base.OnGetHandleConfig( type );
 	}
 
-	protected override INodeType NodeTypeFromPanelEvent( PanelEvent ev )
+	protected override EngineNodeGraph.INodeType NodeTypeFromPanelEvent( PanelEvent ev )
 	{
 		if ( ev.Target is TreeRow row && row.UserData is DisplayInfo info )
 		{

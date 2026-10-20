@@ -11,9 +11,9 @@ public partial class NodeGraphPanel
 	static readonly Vector2 DefaultCommentSize = new( 300f, 192f );
 
 	/// <summary>
-	/// Makes a new comment for the right-click menu to add. Null means this graph has no comments.
+	/// Colour of comments added from the menu: the editor's green.
 	/// </summary>
-	public Func<ICommentNode> CommentFactory { get; set; }
+	public static readonly Color DefaultCommentColor = Color.Parse( "#33b679" ).Value;
 
 	public IEnumerable<CommentPanel> Comments => _nodes.OfType<CommentPanel>();
 
@@ -41,25 +41,47 @@ public partial class NodeGraphPanel
 	}
 
 	/// <summary>
+	/// Add a comment from <see cref="CommentNodeType"/>, as one undo step. Null when the graph has
+	/// no comments.
+	/// </summary>
+	public virtual CommentPanel CreateNewComment( string text, Color color, Vector2 position, Vector2 size )
+	{
+		if ( CommentNodeType is null ) return null;
+
+		using var undoScope = UndoScope( "Add Comment" );
+
+		return CreateNewNode( CommentNodeType, node =>
+		{
+			node.Position = position.SnapToGrid( GridSize );
+
+			var comment = (ICommentNode)node;
+
+			comment.Size = size;
+			comment.Color = color;
+			comment.Title = text;
+		} ) as CommentPanel;
+	}
+
+	/// <summary>
 	/// Add a comment at <paramref name="position"/> holding <paramref name="members"/>, taking
-	/// them out of any comment they were in. Null when the graph has no comments.
+	/// them out of any comment they were in, and select it. Null when the graph has no comments.
 	/// </summary>
 	public CommentPanel CreateComment( Vector2 position, IReadOnlyList<NodePanel> members )
 	{
-		if ( Graph is null || CommentFactory?.Invoke() is not { } comment ) return null;
+		if ( Graph is null || CommentNodeType is null ) return null;
 
-		comment.Position = position;
-		if ( comment.Size == default ) comment.Size = DefaultCommentSize;
+		using var undoScope = UndoScope( "Add Comment" );
+
+		if ( CreateNewComment( "Untitled", DefaultCommentColor, position, DefaultCommentSize ) is not { } panel ) return null;
 
 		RemoveFromComment( members );
-		comment.Members.AddRange( members.Select( x => x.Node.Identifier ) );
+		panel.Comment.Members.AddRange( members.Select( x => x.Node.Identifier ) );
 
-		var panel = AddNode( comment ) as CommentPanel;
 		SelectNode( panel );
 		OrderComments();
 
 		// Around what it holds, rather than the default box at the mouse
-		if ( members.Count > 0 ) panel?.FitToContent();
+		if ( members.Count > 0 ) panel.FitToContent();
 
 		return panel;
 	}
@@ -146,116 +168,5 @@ public partial class NodeGraphPanel
 
 		target.IsDropTarget = false;
 		if ( !cancelled ) AddToComment( target, FreeSelectedNodes() );
-	}
-
-	Menu _menu;
-
-	/// <summary>
-	/// Fill the right-click menu, laid out like the editor's node graph. <paramref name="node"/> is
-	/// the node clicked, already selected, or null for empty space; <paramref name="position"/> is
-	/// where, in canvas units. Empty space offers to paste and add a comment; a node offers to cut,
-	/// copy, duplicate or delete the selection, then to comment it or take it out of its comment.
-	/// </summary>
-	protected virtual void BuildContextMenu( Menu menu, NodePanel node, Vector2 position )
-	{
-		if ( node is null )
-		{
-			if ( ReadClipboard() is { } text && text.StartsWith( $"{ClipboardIdent}:", StringComparison.Ordinal ) )
-			{
-				menu.AddOption( "Paste Node(s)", "content_paste", () => Paste( text, position ) );
-			}
-
-			if ( CommentFactory is not null ) menu.AddOption( "Add Comment", "notes", () => CreateComment( position, [] ) );
-			return;
-		}
-
-		var copyable = CopyableSelection().Length;
-
-		if ( copyable > 0 && SerializeSelection() is not null )
-		{
-			menu.AddOption( $"Cut {NodeCount( copyable )}", "content_cut", CutSelection );
-			menu.AddOption( $"Copy {NodeCount( copyable )}", "content_copy", CopySelection );
-			menu.AddOption( $"Duplicate {NodeCount( copyable )}", "file_copy", DuplicateSelection );
-		}
-
-		var removable = SelectedNodes.Count( x => x.Node.CanRemove );
-
-		if ( removable > 0 )
-		{
-			menu.AddOption( $"Delete {NodeCount( removable )}", "delete", DeleteSelection );
-		}
-
-		var inComment = FindComment( node ) is not null;
-		var fittable = node is CommentPanel { Comment.Members.Count: > 0 };
-		if ( !inComment && !fittable && CommentFactory is null ) return;
-
-		if ( menu.HasOptions ) menu.AddSeparator();
-
-		if ( fittable )
-		{
-			var comment = (CommentPanel)node;
-			menu.AddOption( "Fit to Content", "fit_screen", comment.FitToContent );
-		}
-
-		if ( inComment )
-		{
-			var members = SelectedNodes.Where( x => FindComment( x ) is not null ).ToArray();
-			menu.AddOption( "Remove from comment", "playlist_remove", () => RemoveFromComment( members ) );
-		}
-
-		if ( CommentFactory is null ) return;
-
-		// Things inside a selected comment stay in it; the new comment takes the comment
-		var selectedComments = SelectedNodes.OfType<CommentPanel>().ToArray();
-		var selected = SelectedNodes.Where( x => !selectedComments.Any( c => c != x && IsWithin( x, c ) ) ).ToArray();
-		menu.AddOption( $"Add Comment for {NodeCount( selected.Length )}", "notes", () => CreateComment( position, selected ) );
-	}
-
-	static string NodeCount( int count ) => $"{count} {(count == 1 ? "node" : "nodes")}";
-
-	/// <summary>
-	/// Right-clicking a node selects it, then opens the menu for it.
-	/// </summary>
-	internal void OpenContextMenu( NodePanel node )
-	{
-		if ( node is not null && !node.Selected ) SelectNode( node );
-
-		var position = ScreenToCanvas( MousePosition );
-		OpenMenu( menu => BuildContextMenu( menu, node, position ) );
-	}
-
-	/// <summary>
-	/// Open a menu under the mouse, filled by <paramref name="build"/>, closing any this graph has
-	/// open. Nothing opens when it adds no options.
-	/// </summary>
-	protected void OpenMenu( Action<Menu> build )
-	{
-		_menu?.Delete( true );
-
-		var menu = _menu = new Menu();
-		build( menu );
-
-		if ( !menu.HasOptions )
-		{
-			_menu = null;
-			menu.Delete( true );
-			return;
-		}
-
-		menu.Closed += _ =>
-		{
-			if ( _menu == menu ) _menu = null;
-			menu.Delete( true );
-		};
-
-		menu.Open( this, Popup.PositionMode.UnderMouse );
-	}
-
-	protected override void OnRightClick( MousePanelEvent e )
-	{
-		if ( Graph is null ) return;
-
-		OpenContextMenu( null );
-		e.StopPropagation();
 	}
 }

@@ -9,7 +9,7 @@ namespace EngineNodeGraph;
 /// bigger. Drag an edge or corner to resize it - never smaller than its members need.
 /// <see cref="FitToContent"/> goes back to hugging them.
 /// </summary>
-public class CommentPanel : NodePanel
+public partial class CommentPanel : NodePanel
 {
 	/// <summary>
 	/// Space between the members and the edges. Grid multiples keep a fitted comment on the grid.
@@ -33,35 +33,13 @@ public class CommentPanel : NodePanel
 				_titleWidth = NodePaint.Measure( title, 10f, 600 ).x;
 			}
 
-			return new Vector2( MathF.Max( _titleWidth + 24f, 48f ), HeaderHeight + Padding );
+			var icon = string.IsNullOrEmpty( Comment.DisplayInfo.Icon ) ? 0f : 24f;
+			return new Vector2( MathF.Max( _titleWidth + icon + 24f, 48f ), HeaderHeight + Padding );
 		}
 	}
 
 	string _measuredTitle;
 	float _titleWidth;
-
-	/// <summary>
-	/// How far in from an edge a press resizes rather than moves, in canvas units.
-	/// </summary>
-	const float EdgeGrab = 8f;
-
-	[Flags]
-	enum Edge
-	{
-		None = 0,
-		Left = 1,
-		Top = 2,
-		Right = 4,
-		Bottom = 8,
-	}
-
-	/// <summary>
-	/// The edges being dragged, or None while the drag moves the comment.
-	/// </summary>
-	Edge _resizing;
-	Vector2 _resizeStartPosition;
-	Vector2 _resizeStartSize;
-	string _cursor;
 
 	public ICommentNode Comment => (ICommentNode)Node;
 
@@ -183,7 +161,7 @@ public class CommentPanel : NodePanel
 				member.CommitPosition();
 			}
 		}
-		else if ( !(Selected && dragging) )
+		else if ( !_following && !(Selected && dragging) )
 		{
 			Grow( dragging );
 		}
@@ -237,6 +215,8 @@ public class CommentPanel : NodePanel
 
 	/// <summary>
 	/// Cover the members: around them alone, or the hand-sized box plus whatever members are past it.
+	/// A comment holding nothing but comments always fits around them - its empty space would only
+	/// be padding around padding - so nested comments sit one padding inside each other.
 	/// Mid-drag that's on screen only, so the node isn't rewritten every frame; once the drag ends
 	/// it's written back.
 	/// </summary>
@@ -244,8 +224,34 @@ public class CommentPanel : NodePanel
 	{
 		if ( ContentBounds() is not { } content ) return;
 
-		var own = _ownBounds ?? content;
+		var before = CurrentBounds;
+		var own = HoldsOnlyComments() ? content : _ownBounds ?? content;
 		SetBounds( Vector2.Min( own.Min, content.Min ), Vector2.Max( own.Max, content.Max ), commit: !dragging );
+
+		// Outer comments tick first, so without this each level would trail the one inside it by a
+		// frame and nested comments would wobble apart instead of moving as one
+		if ( CurrentBounds != before && Graph.FindComment( this ) is { _following: false } outer && !(outer.Selected && dragging) )
+		{
+			outer.RefreshMemberIds();
+			outer.Grow( dragging );
+		}
+	}
+
+	/// <summary>
+	/// Whether every member is a comment. False when it holds none.
+	/// </summary>
+	bool HoldsOnlyComments()
+	{
+		var any = false;
+
+		foreach ( var node in Graph.Nodes )
+		{
+			if ( !IsMember( node ) ) continue;
+			if ( node is not CommentPanel ) return false;
+			any = true;
+		}
+
+		return any;
 	}
 
 	/// <summary>
@@ -293,101 +299,6 @@ public class CommentPanel : NodePanel
 		if ( Comment.Size != size ) Comment.Size = size;
 	}
 
-	/// <summary>
-	/// The edges under the mouse, if it's close enough to any to resize.
-	/// </summary>
-	Edge EdgeUnderMouse()
-	{
-		var local = Graph.ScreenToCanvas( Graph.MousePosition ) - Position;
-		var edge = Edge.None;
-
-		if ( local.x < EdgeGrab ) edge |= Edge.Left;
-		else if ( local.x > Size.x - EdgeGrab ) edge |= Edge.Right;
-
-		if ( local.y < EdgeGrab ) edge |= Edge.Top;
-		else if ( local.y > Size.y - EdgeGrab ) edge |= Edge.Bottom;
-
-		return edge;
-	}
-
-	void UpdateCursor()
-	{
-		var edge = _resizing != Edge.None ? _resizing : HasHovered && !IsDragging ? EdgeUnderMouse() : Edge.None;
-
-		var cursor = edge switch
-		{
-			Edge.Left | Edge.Top or Edge.Right | Edge.Bottom => "nwse-resize",
-			Edge.Right | Edge.Top or Edge.Left | Edge.Bottom => "nesw-resize",
-			Edge.Left or Edge.Right => "ew-resize",
-			Edge.Top or Edge.Bottom => "ns-resize",
-			_ => null,
-		};
-
-		if ( cursor == _cursor ) return;
-		_cursor = cursor;
-		Style.Cursor = cursor;
-	}
-
-	protected override bool OnDragStart( MousePanelEvent e )
-	{
-		_resizing = EdgeUnderMouse();
-		if ( _resizing == Edge.None ) return base.OnDragStart( e );
-
-		Graph.PressNode( this, e.HasCtrl, e.HasShift );
-		_resizeStartPosition = Position;
-		_resizeStartSize = Size;
-		return true;
-	}
-
-	protected override void OnDragMove( Vector2 delta )
-	{
-		if ( _resizing == Edge.None )
-		{
-			base.OnDragMove( delta );
-			return;
-		}
-
-		var grid = Graph.GridSize;
-		var min = _resizeStartPosition;
-		var max = _resizeStartPosition + _resizeStartSize;
-
-		if ( _resizing.HasFlag( Edge.Left ) ) min.x = Snap( min.x + delta.x, grid );
-		if ( _resizing.HasFlag( Edge.Right ) ) max.x = Snap( max.x + delta.x, grid );
-		if ( _resizing.HasFlag( Edge.Top ) ) min.y = Snap( min.y + delta.y, grid );
-		if ( _resizing.HasFlag( Edge.Bottom ) ) max.y = Snap( max.y + delta.y, grid );
-
-		// Never below the minimum, and never cutting a member off
-		var content = ContentBounds();
-		if ( _resizing.HasFlag( Edge.Left ) ) min.x = MathF.Min( min.x, MathF.Min( max.x - MinimumSize.x, content?.Min.x ?? float.MaxValue ) );
-		if ( _resizing.HasFlag( Edge.Right ) ) max.x = MathF.Max( max.x, MathF.Max( min.x + MinimumSize.x, content?.Max.x ?? float.MinValue ) );
-		if ( _resizing.HasFlag( Edge.Top ) ) min.y = MathF.Min( min.y, MathF.Min( max.y - MinimumSize.y, content?.Min.y ?? float.MaxValue ) );
-		if ( _resizing.HasFlag( Edge.Bottom ) ) max.y = MathF.Max( max.y, MathF.Max( min.y + MinimumSize.y, content?.Max.y ?? float.MinValue ) );
-
-		SetBounds( min, max, commit: false );
-	}
-
-	protected override void OnDragFinish( bool cancelled )
-	{
-		if ( _resizing == Edge.None )
-		{
-			base.OnDragFinish( cancelled );
-			return;
-		}
-
-		_resizing = Edge.None;
-
-		(Vector2 Min, Vector2 Max) start = (_resizeStartPosition, _resizeStartPosition + _resizeStartSize);
-		var bounds = cancelled ? start : CurrentBounds;
-
-		// A press on the edge that didn't move it (a click to select) mustn't freeze the comment at
-		// whatever size its members had pushed it to
-		if ( !cancelled && bounds != start ) _ownBounds = bounds;
-
-		SetBounds( bounds.Min, bounds.Max );
-	}
-
-	static float Snap( float value, float grid ) => MathF.Round( value / grid ) * grid;
-
 	static Vector2 Floor( Vector2 value, float grid ) => new( MathF.Floor( value.x / grid ) * grid, MathF.Floor( value.y / grid ) * grid );
 
 	static Vector2 Ceiling( Vector2 value, float grid ) => new( MathF.Ceiling( value.x / grid ) * grid, MathF.Ceiling( value.y / grid ) * grid );
@@ -397,6 +308,12 @@ public class CommentPanel : NodePanel
 		Size = Vector2.Max( Comment.Size, MinimumSize );
 		Style.Width = Size.x;
 		Style.Height = Size.y;
+	}
+
+	protected override void OnRebuild()
+	{
+		base.OnRebuild();
+		Layout();
 	}
 
 	public override void OnDraw( Painter painter )
@@ -427,15 +344,25 @@ public class CommentPanel : NodePanel
 
 		paint.SetDefaultFont( 10f, 600 );
 		paint.SetPen( Color.White );
-		paint.DrawText( header.Shrink( 12f, 0f ), comment.Title, TextFlag.LeftCenter );
+
+		var titleRect = header.Shrink( 12f, 0f );
+
+		if ( !string.IsNullOrEmpty( comment.DisplayInfo.Icon ) )
+		{
+			paint.DrawIcon( titleRect, comment.DisplayInfo.Icon, 19f, TextFlag.LeftCenter );
+			titleRect = titleRect.Shrink( 24f, 0f, 0f, 0f );
+		}
+
+		paint.DrawText( titleRect, comment.Title, TextFlag.LeftCenter );
 
 		if ( !string.IsNullOrEmpty( comment.Description ) )
 		{
 			var body = new Rect( 0f, HeaderHeight, rect.Width, rect.Height - HeaderHeight ).Shrink( 12f, 8f );
+			var description = comment.Description.Length > 300 ? comment.Description[..300] : comment.Description;
 
 			paint.SetDefaultFont( comment.DescriptionFontSize.Clamp( 8, 64 ) * 0.75f );
 			paint.SetPen( Color.White.WithAlpha( 0.7f ) );
-			paint.DrawText( body, comment.Description, TextFlag.LeftTop | TextFlag.WordWrap );
+			paint.DrawText( body, description, TextFlag.LeftTop | TextFlag.WordWrap );
 		}
 	}
 }

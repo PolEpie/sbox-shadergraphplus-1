@@ -341,6 +341,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		_graphView.Graph = _graph;
 		_blackboard.Graph = _graph;
+		UpdateOutputPlugTypes();
 
 		UpdateTitle();
 
@@ -435,6 +436,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		_graphView.Graph = _graph;
 		_blackboard.Graph = _graph;
+		UpdateOutputPlugTypes();
 
 		UpdateTitle();
 
@@ -509,7 +511,95 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	{
 		SGPLogger.Info( $"TODO : GeneratePreviewCode" );
 
+		UpdateOutputPlugTypes();
+
 		return "";
+	}
+
+	/// <summary>
+	/// Give each output plug the type the compiler works out for it, like the Qt editor does while
+	/// generating preview code. Outputs are declared as <see cref="NodeResult.Func"/>, which has no
+	/// colour of its own - reroutes and generic nodes would stay grey, and so would their wires.
+	/// </summary>
+	private void UpdateOutputPlugTypes()
+	{
+		if ( _graph is null || !_graphView.IsValid() ) return;
+
+		var features = new Dictionary<string, ShaderFeatureBase>();
+		foreach ( var feature in _graph.Parameters.OfType<IBlackboardShaderFeatureParameter>() )
+		{
+			ShaderFeatureBase shaderFeature = feature switch
+			{
+				ShaderFeatureBooleanParameter b => new ShaderFeatureBoolean { Name = b.Name, HeaderName = b.HeaderName, Description = b.Description },
+				ShaderFeatureEnumParameter e => new ShaderFeatureEnum { Name = e.Name, HeaderName = e.HeaderName, Description = e.Description, Options = e.Options },
+				_ => null
+			};
+
+			if ( shaderFeature is { IsValid: true } ) features.TryAdd( shaderFeature.Name, shaderFeature );
+		}
+
+		var compiler = new GraphCompiler( _graph, null, features, true );
+
+		foreach ( var node in _graph.Nodes.OfType<BaseNodePlus>() )
+		{
+			if ( _graphView.FindNode( node ) is not { } panel ) continue;
+
+			foreach ( var plug in panel.Outputs )
+			{
+				if ( plug.Inner is not BasePlug { Info.Property: { } property } || property.PropertyType != typeof( NodeResult.Func ) ) continue;
+				if ( property.GetCustomAttribute<BaseNodePlus.OutputAttribute>() is null ) continue;
+
+				NodeResult result;
+				try
+				{
+					result = compiler.Result( new NodeInput { Identifier = node.Identifier, Output = property.Name } );
+				}
+				catch ( Exception )
+				{
+					// A node that can't compile yet keeps its declared type
+					continue;
+				}
+
+				if ( ComponentType( result ) is { } type ) plug.PropertyType = type;
+			}
+		}
+	}
+
+	/// <summary>
+	/// The value type a compiled result stands for, or null when it isn't one a plug shows.
+	/// </summary>
+	private static Type ComponentType( NodeResult result )
+	{
+		if ( !result.IsValid() ) return null;
+
+		if ( result.ResultType == ResultType.VoidFunction )
+		{
+			return result.Components switch
+			{
+				1 => typeof( float ),
+				2 => typeof( Vector2 ),
+				3 => typeof( Vector3 ),
+				4 => typeof( Vector4 ),
+				_ => null,
+			};
+		}
+
+		return result.ResultType switch
+		{
+			ResultType.Bool => typeof( bool ),
+			ResultType.Int => typeof( int ),
+			ResultType.Float => typeof( float ),
+			ResultType.Vector2 => typeof( Vector2 ),
+			ResultType.Vector3 => typeof( Vector3 ),
+			ResultType.Vector4 => typeof( Vector4 ),
+			ResultType.Float2x2 => typeof( Float2x2 ),
+			ResultType.Float3x3 => typeof( Float3x3 ),
+			ResultType.Float4x4 => typeof( Float4x4 ),
+			ResultType.Sampler => typeof( Sampler ),
+			ResultType.Texture2D or ResultType.TextureCube => typeof( Texture ),
+			ResultType.Gradient => typeof( Gradient ),
+			_ => null,
+		};
 	}
 
 	private void SetDirty( bool evaluate = true )

@@ -65,31 +65,39 @@ public sealed partial class ShaderGraphPlusViewPanel
 	}
 
 	/// <summary>
-	/// A wire dropped on nothing offers the nodes that can take it, wired up once created.
+	/// A wire dropped on nothing offers the nodes that can take it, wired up once created. Anything
+	/// else opens the engine's menu.
 	/// </summary>
-	private void BuildConnectionDropContextMenu( PlugPanel plug, Vector2 position )
+	protected override void OpenContextMenu( Vector2 position, EngineNodeGraph.NodePanel node, PlugPanel plug = null, Action onClose = null )
 	{
-		if ( Graph is null ) return;
-
-		OpenMenu( menu =>
+		if ( plug is null || Graph is null )
 		{
-			if ( RerouteNodeType is not null )
-			{
-				menu.AddOption( "Add Reroute", "route", () => CreateNewNode( RerouteNodeType, position, plug ) );
-				menu.AddSeparator();
-			}
+			base.OpenContextMenu( position, node, plug, onClose );
+			return;
+		}
 
-			if ( plug is PlugOutPanel plugOut )
-			{
-				CreateNamedRerouteDeclarationOption( menu, position, plugOut );
-			}
-			else if ( plug is PlugInPanel plugIn )
-			{
-				CreateNamedRerouteOptions( menu, position, plugIn );
-			}
+		var menu = new Sandbox.UI.Menu();
 
-			CreateNodeOptions( menu, position, plug );
-		} );
+		if ( RerouteNodeType is not null )
+		{
+			menu.AddOption( "Add Reroute", "route", () => CreateNewNode( RerouteNodeType, position, plug ) );
+			menu.AddSeparator();
+		}
+
+		if ( plug is PlugOutPanel plugOut )
+		{
+			CreateNamedRerouteDeclarationOption( menu, position, plugOut );
+		}
+		else if ( plug is PlugInPanel plugIn )
+		{
+			CreateNamedRerouteOptions( menu, position, plugIn );
+		}
+
+		CreateNodeOptions( menu, position, plug );
+
+		if ( onClose is not null ) menu.Closed += _ => onClose();
+
+		if ( !OpenMenu( menu ) ) onClose?.Invoke();
 	}
 
 	private void CreateNamedRerouteDeclarationOption( Menu menu, Vector2 position, PlugOutPanel plugOut )
@@ -105,7 +113,7 @@ public sealed partial class ShaderGraphPlusViewPanel
 				else
 				{
 					var nodeType = new NamedRerouteDeclarationNodeType( EditorTypeLibrary.GetType<NamedRerouteDeclarationNode>(), namedRerouteName );
-					CreateNewNode( nodeType, position, plugOut );
+					CreateNewNode( new PanelNodeType( nodeType ), position, plugOut );
 				}
 			},
 			"Specify a Named Reroute name" );
@@ -126,7 +134,7 @@ public sealed partial class ShaderGraphPlusViewPanel
 				{
 					var nodeType = new NamedRerouteNodeType( EditorTypeLibrary.GetType<NamedRerouteNode>(), namedRerouteDeclaration.Name );
 
-					CreateNewNode( nodeType, position, plugIn );
+					CreateNewNode( new PanelNodeType( nodeType ), position, plugIn );
 				} );
 			}
 		}
@@ -282,7 +290,7 @@ public sealed partial class ShaderGraphPlusViewPanel
 
 			results.Clear();
 
-			var query = new NodeQuery( Graph, plug?.Inner as IPlug, text );
+			var query = new EngineNodeGraph.NodeQuery( Graph, plug?.Inner, text );
 			var types = GetRelevantNodes( query ).ToArray();
 
 			if ( query.Filter.Count > 0 )
