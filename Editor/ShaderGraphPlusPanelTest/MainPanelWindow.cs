@@ -798,20 +798,12 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		Editor.FileSystem.Temporary.WriteJson( "shadergraphplus_recentfiles.json", _recentFiles );
 	}
 
-
-	/// <summary>
-	/// Re-add the stylesheet so a hotload picks up its new text.
-	/// </summary>
-	public override void OnHotloaded()
-	{
-		StyleSheet.AddInline( ShaderGraphPlusStyleSheets.ShaderGraphPlusScss, "shadergraphplus_style" );
-		base.OnHotloaded();
-	}
-
 	// For Development only
 	[EditorEvent.Hotload]
 	private void OnHotload()
 	{
+		StyleSheet.AddInline( ShaderGraphPlusStyleSheets.ShaderGraphPlusScss, "shadergraphplus_style" );
+
 		BuildMenuBar();
 		CreateToolBar();
 		CreateUI();
