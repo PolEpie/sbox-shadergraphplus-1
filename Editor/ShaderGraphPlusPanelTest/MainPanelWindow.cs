@@ -240,7 +240,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		_properties = new PropertiesPanel();
 		_properties.Target = _graph;
 		_properties.PropertyUpdated += OnPropertyUpdated;
-		
+
 		_preview = new PreviewPanel();
 		_preview.OnModelChanged = ( model ) => _graph.Model = model?.Name;
 
@@ -306,7 +306,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		{
 			LoadShaderTypeInfo();
 		}
-	
+
 		var shouldEvaluate = _properties.Target is not CommentNode;
 		SetDirty( shouldEvaluate );
 	}

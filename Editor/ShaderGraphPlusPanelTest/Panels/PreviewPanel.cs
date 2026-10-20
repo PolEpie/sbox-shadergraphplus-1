@@ -88,7 +88,7 @@ public sealed partial class PreviewPanel : Panel
 	private Model _sphere;
 
 	private Primitive _primitive;
-	
+
 	private int _stageId;
 
 	public bool EnablePostProcessing
@@ -199,7 +199,7 @@ public sealed partial class PreviewPanel : Panel
 			{
 				SetModel( value, Primitive.Custom );
 			}
-			
+
 			UpdateMaterial();
 			UpdatePostProcessing();
 			SetAllAttributes();
@@ -394,10 +394,10 @@ public sealed partial class PreviewPanel : Panel
 		var menu = new Sandbox.UI.Menu();
 		_settingsMenu = menu;
 
-		_gridButton = _settingsMenu.AddOption( "Show grid", "grid_on", () => 
+		_gridButton = _settingsMenu.AddOption( "Show grid", "grid_on", () =>
 		{
 			ShowGrid = !ShowGrid;
-			
+
 		} );
 
 		_showSkyButton = _settingsMenu.AddOption( "Show Sky", "nights_stay", () =>
@@ -412,7 +412,7 @@ public sealed partial class PreviewPanel : Panel
 	private void OpenSpeedMenu()
 	{
 		_speedMenu?.Delete( true );
-		
+
 		var menu = new Sandbox.UI.Menu();
 		_speedMenu = menu;
 
