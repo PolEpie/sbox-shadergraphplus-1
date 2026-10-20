@@ -300,11 +300,6 @@ public sealed class PreviewPanel : Widget
 		_preview.SetFeature( id, value );
 	}
 
-	public void SetDynamicCombo( string id, int value )
-	{
-		_preview.SetDynamicCombo( id, value );
-	}
-
 	public void SetStage( int value )
 	{
 		_preview.SetStage( value );
@@ -498,7 +493,6 @@ public sealed class Preview : SceneRenderingWidget
 	private Dictionary<string, Color> _float4Attributes = new();
 	private Dictionary<string, Texture> _textureAttributes = new();
 	private Dictionary<string, SamplerState> _samplerStateAttributes = new();
-	private Dictionary<string, int> _dynamicComboIntAttributes = new();
 	private Dictionary<string, int> _shaderFeatures = new();
 	private Dictionary<string, Float2x2> _float2x2Attributes = new();
 	private Dictionary<string, Float3x3> _float3x3Attributes = new();
@@ -587,11 +581,7 @@ public sealed class Preview : SceneRenderingWidget
 		set
 		{
 			_renderBackfaces = value;
-
-			if ( _sceneObject.IsValid() )
-			{
-				_sceneObject.Attributes.SetCombo( "D_RENDER_BACKFACES", _renderBackfaces );
-			}
+			ApplyFeature( "F_RENDER_BACKFACES", _renderBackfaces ? 1 : 0 );
 		}
 	}
 
@@ -806,8 +796,6 @@ public sealed class Preview : SceneRenderingWidget
 			UpdateMaterial();
 			UpdatePostProcessing();
 			SetAllAttributes();
-
-			_sceneObject.Attributes.SetCombo( "D_RENDER_BACKFACES", _renderBackfaces );
 		}
 	}
 
@@ -823,6 +811,13 @@ public sealed class Preview : SceneRenderingWidget
 
 	private void SetAllAttributes()
 	{
+		ApplyFeature( "F_RENDER_BACKFACES", _renderBackfaces ? 1 : 0 );
+
+		foreach ( var v in _shaderFeatures )
+		{
+			ApplyFeature( v.Key, v.Value );
+		}
+
 		foreach ( var v in _samplerStateAttributes )
 		{
 			if ( _material.Flags.IsSky )
@@ -1057,25 +1052,19 @@ public sealed class Preview : SceneRenderingWidget
 
 	public void SetFeature( string id, int value )
 	{
-		_shaderFeatures.Add( id, value );
-		throw new NotImplementedException( "TODO" );
+		_shaderFeatures[id] = value;
+		ApplyFeature( id, value );
 	}
 
-	public void SetDynamicCombo( string id, int value )
+	/// <summary>
+	/// Features live on the material. The preview declares them as specialization constants, so setting one
+	/// picks an already compiled variant. Never touches the shared fallback material shown while compiling.
+	/// </summary>
+	private void ApplyFeature( string id, int value )
 	{
-		if ( !_dynamicComboIntAttributes.ContainsKey( id ) )
-		{
-			_dynamicComboIntAttributes.Add( id, value );
+		if ( _material is null || _material == ShaderGraphPlusGlobals.Preview.DefaultMaterial ) return;
 
-			if ( _material.Flags.IsSky )
-			{
-				Scene.RenderAttributes.Set( id, value );
-			}
-			else
-			{
-				_sceneObject.Attributes.Set( id, value );
-			}
-		}
+		_material.SetFeature( id, value );
 	}
 
 	public void SetStage( int value )
@@ -1105,7 +1094,6 @@ public sealed class Preview : SceneRenderingWidget
 		_intAttributes.Clear();
 		_floatAttributes.Clear();
 		_boolAttributes.Clear();
-		_dynamicComboIntAttributes.Clear();
 		_shaderFeatures.Clear();
 
 		if ( _sceneObject.IsValid() )

@@ -40,7 +40,6 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	private readonly Dictionary<string, Color> _float4Attributes = new();
 	private readonly Dictionary<string, SamplerState> _samplerStateAttributes = new();
 	private readonly Dictionary<string, Texture> _textureAttributes = new();
-	private readonly Dictionary<string, int> _dynamicComboIntAttributes = new();
 	private readonly Dictionary<string, int> _shaderFeatures = new();
 
 	public bool IsSubgraph => false;
@@ -387,7 +386,6 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		_float4Attributes.Clear();
 		_textureAttributes.Clear();
 		_samplerStateAttributes.Clear();
-		_dynamicComboIntAttributes.Clear();
 		_shaderFeatures.Clear();
 
 		_preview?.ClearAllAttributes();

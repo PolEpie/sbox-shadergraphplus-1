@@ -83,7 +83,6 @@ public class MainWindow : DockWindow
 	private readonly Dictionary<string, Color> _float4Attributes = new();
 	private readonly Dictionary<string, SamplerState> _samplerStateAttributes = new();
 	private readonly Dictionary<string, Texture> _textureAttributes = new();
-	private readonly Dictionary<string, int> _dynamicComboIntAttributes = new();
 	private readonly Dictionary<string, int> _shaderFeatures = new();
 
 	private bool _isCompiling = false;
@@ -518,12 +517,6 @@ public class MainWindow : DockWindow
 				if ( _shaderFeatures.TryAdd( v.FeatureName, v.Value ) )
 				{
 					_preview?.SetFeature( v.FeatureName, v.Value );
-				}
-				break;
-			case DynamicComboWrapper v:
-				if ( _dynamicComboIntAttributes.TryAdd( v.ComboName, v.Value ) )
-				{
-					_preview?.SetDynamicCombo( v.ComboName, v.Value );
 				}
 				break;
 			default:
@@ -1334,7 +1327,6 @@ public class MainWindow : DockWindow
 		_float4Attributes.Clear();
 		_textureAttributes.Clear();
 		_samplerStateAttributes.Clear();
-		_dynamicComboIntAttributes.Clear();
 		_shaderFeatures.Clear();
 
 		_preview?.ClearAttributes();
@@ -1806,11 +1798,6 @@ public class MainWindow : DockWindow
 		foreach ( var value in _boolAttributes )
 		{
 			_preview.SetAttribute( value.Key, value.Value );
-		}
-
-		foreach ( var value in _dynamicComboIntAttributes )
-		{
-			_preview.SetDynamicCombo( value.Key, value.Value );
 		}
 
 		foreach ( var value in _shaderFeatures )

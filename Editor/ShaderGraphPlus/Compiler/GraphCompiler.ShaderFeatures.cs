@@ -75,19 +75,23 @@ public sealed partial class GraphCompiler
 		}
 	}
 
-	public void SetComboPreview( string comboName, int preview )
+	/// <summary>
+	/// Tell the preview which option of <paramref name="feature"/> to show. The preview declares features as
+	/// specialization constants, so picking one is setting the material's feature, with no recompile.
+	/// </summary>
+	private void SetFeaturePreview( ShaderFeatureBase feature, int preview )
 	{
-		if ( IsNotPreview )
-		{
-			SGPLogger.Warning( $"{nameof( SetComboPreview )} was called when IsPreview is false!" );
-			return;
-		}
-
-		Assert.True( comboName.StartsWith( $"D_" ), $"Cannot set a static combo \"{comboName}\"" );
-
-		var dynamicComboWrapper = new DynamicComboWrapper( comboName, preview );
-		OnAttribute?.Invoke( dynamicComboWrapper.ComboName, dynamicComboWrapper );
+		var featureName = feature.GetFeatureString();
+		OnAttribute?.Invoke( featureName, new ShaderFeatureWrapper( featureName, preview ) );
 	}
+
+	/// <summary>
+	/// Opens a feature switch branch. The preview's features are specialization constants, which are language
+	/// constants, so it branches with <c>if</c>; the exported shader's static combos use the preprocessor.
+	/// </summary>
+	private string SwitchIf( string condition ) => IsPreview ? $"if ( {condition} )" : $"#if ( {condition} )";
+
+	private string SwitchElseIf( string condition ) => IsPreview ? $"else if ( {condition} )" : $"#elif ( {condition} )";
 
 	public NodeResult ResultFeatureSwitch( IEnumerable<NodeInput> inputs, ShaderFeatureBase shaderFeature, int previewInt )
 	{
@@ -147,18 +151,14 @@ public sealed partial class GraphCompiler
 
 			var lastResult = new NodeResult( resultType, result.Result.Cast( resultTypeComponents ) );
 
+			var combo = $"S_{featureNameClean.ToUpper()}";
+
 			if ( index == 0 )
 			{
 				sb.AppendLine( InitializeVariable( resultType, resultAssignmentLocal ) ); //$"{resultDataType} {resultLocal};" );
 
-				if ( shaderFeature is ShaderFeatureBoolean boolFeature )
-				{
-					sb.AppendLine( $"#if ( {(IsPreview ? "D" : "S")}_{featureNameClean.ToUpper()} == SWITCH_TRUE )" );
-				}
-				else
-				{
-					sb.AppendLine( $"#if ( {(IsPreview ? "D" : "S")}_{featureNameClean.ToUpper()} == {index} )" );
-				}
+				var value = shaderFeature is ShaderFeatureBoolean ? "SWITCH_TRUE" : $"{index}";
+				sb.AppendLine( SwitchIf( $"{combo} == {value}" ) );
 
 				BuildSwitchBlock( sb, result.GeneratedLocals, resultAssignmentLocal, lastResult );
 			}
@@ -167,33 +167,32 @@ public sealed partial class GraphCompiler
 			{
 				if ( index == blockResults.Count - 1 )
 				{
-					sb.AppendLine( $"#else" );
+					sb.AppendLine( IsPreview ? "else" : "#else" );
 					BuildSwitchBlock( sb, result.GeneratedLocals, resultAssignmentLocal, lastResult );
-					sb.AppendLine( $"#endif" );
+					if ( IsNotPreview ) sb.AppendLine( $"#endif" );
 				}
 			}
 			else
 			{
 				if ( index != 0 && index != blockResults.Count - 1 )
 				{
-					sb.AppendLine( $"#elif ( {(IsPreview ? "D" : "S")}_{featureNameClean.ToUpper()} == {index} )" );
+					sb.AppendLine( SwitchElseIf( $"{combo} == {index}" ) );
 					BuildSwitchBlock( sb, result.GeneratedLocals, resultAssignmentLocal, lastResult );
 				}
 				else if ( index == blockResults.Count - 1 )
 				{
-					sb.AppendLine( $"#elif ( {(IsPreview ? "D" : "S")}_{featureNameClean.ToUpper()} == {index} )" );
+					sb.AppendLine( SwitchElseIf( $"{combo} == {index}" ) );
 					BuildSwitchBlock( sb, result.GeneratedLocals, resultAssignmentLocal, lastResult );
-					sb.AppendLine( $"#endif" );
+					if ( IsNotPreview ) sb.AppendLine( $"#endif" );
 				}
 			}
 		}
 
-		//SGPLog.Info( $"Generated Switch D_{featureNameClean.ToUpper()}: \n {sb.ToString()}" );
+		//SGPLog.Info( $"Generated Switch S_{featureNameClean.ToUpper()}: \n {sb.ToString()}" );
 
-		// TODO : Once SceneObject.Attributes.SetFeature is added. Replace SetComboPreview with something like SetFeaturePreview.
 		if ( IsPreview )
 		{
-			SetComboPreview( shaderFeature.GetDynamicComboString(), previewInt );
+			SetFeaturePreview( shaderFeature, previewInt );
 		}
 
 		var finalResult = new NodeResult( resultType, resultAssignmentLocal );
@@ -220,6 +219,10 @@ public sealed partial class GraphCompiler
 		{
 			PixelResult = new();
 		}
+
+		// Preview constants are named from the attribute count; carry it on, or every branch's first
+		// constant would be g_ps_0 and all branches would read the same value
+		ShaderResult.Replace( new(), new( outerResult.Attributes ), new() );
 
 		InputStack = new();
 

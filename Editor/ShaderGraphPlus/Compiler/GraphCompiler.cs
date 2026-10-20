@@ -1802,14 +1802,10 @@ public sealed partial class GraphCompiler
 
 		foreach ( var feature in ShaderFeatures )
 		{
-			if ( IsPreview )
-			{
-				sb.AppendLine( $"DynamicCombo( {feature.Value.GetDynamicComboString()}, {feature.Value.GetOptionRangeString()}, Sys( ALL ) );" );
-			}
-			else
-			{
-				sb.AppendLine( $"StaticCombo( {feature.Value.GetStaticComboString()}, {feature.Value.GetFeatureString()}, Sys( ALL ) );" );
-			}
+			// The preview makes features specialization constants: every option shares one compiled program,
+			// instead of each feature doubling the combos the compiler builds
+			var specialization = IsPreview ? ", ShaderConstant()" : "";
+			sb.AppendLine( $"StaticCombo( {feature.Value.GetStaticComboString()}, {feature.Value.GetFeatureString()}, Sys( ALL ){specialization} );" );
 
 			sb.AppendLine();
 		}
@@ -2055,7 +2051,8 @@ public sealed partial class GraphCompiler
 	{
 		var sb = new StringBuilder();
 
-		var combo = "";
+		// A render state can read the feature directly, so backfaces cost no combo, in the preview too
+		var combo = "F_RENDER_BACKFACES";
 
 		if ( IsSkyShader )
 		{
@@ -2064,18 +2061,6 @@ public sealed partial class GraphCompiler
 		}
 		else
 		{
-			if ( IsPreview )
-			{
-				sb.AppendLine();
-				sb.AppendLine( "DynamicCombo( D_RENDER_BACKFACES, 0..1, Sys( ALL ) );" );
-
-				combo = "D_RENDER_BACKFACES";
-			}
-			else
-			{
-				combo = "F_RENDER_BACKFACES";
-			}
-
 			sb.AppendLine();
 
 			var renderFace = Graph.RenderFace switch

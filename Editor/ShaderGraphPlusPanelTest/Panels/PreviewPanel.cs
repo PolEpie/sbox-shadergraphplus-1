@@ -207,8 +207,6 @@ public sealed partial class PreviewPanel : Panel
 			//UpdateAnimationCombo();
 
 			OnModelChanged?.Invoke( value );
-
-			//_modelRenderer.Attributes.SetCombo( "D_RENDER_BACKFACES", _renderBackfaces );
 		}
 	}
 
