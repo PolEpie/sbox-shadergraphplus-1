@@ -20,7 +20,6 @@ public sealed class GeneratedCodePanel : Panel
 		{
 			if ( _scriptControl == null )
 				return;
-		
 
 			_scriptControl.Source = value;
 		}
