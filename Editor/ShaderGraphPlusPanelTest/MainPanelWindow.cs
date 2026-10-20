@@ -919,6 +919,10 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 	{
 		StyleSheet.AddInline( ShaderGraphPlusStyleSheets.ShaderGraphPlusScss, "shadergraphplus_style" );
 
+		// Rebuilding adds a new title bar, toolbar and dock host, so drop the old ones and their floating windows first
+		DockWindows?.Dispose();
+		DeleteChildren( true );
+
 		BuildMenuBar();
 		CreateToolBar();
 		CreateUI();
