@@ -29,6 +29,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	private PreviewPanel _preview;
 
 	private ShaderGraphPlus.ShaderGraphPlus _graph;
+	private ShaderTemplateResource _shaderTemplate;
 	private Asset _asset;
 
 	private readonly Dictionary<string, bool> _boolAttributes = new();
@@ -119,6 +120,14 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		Option( file, "Open", "file_open", "Ctrl+O", Open );
 		Option( file, "Save", "save", "Ctrl+S", Save );
 		Option( file, "Save As...", "save_as", "Ctrl+Shift+S", SaveAs );
+
+		file.AddSeparator();
+
+		Option( file, "Reload Shader Template", "common/reload.png", "", () =>
+		{
+			LoadShaderTypeInfo();
+			SetDirty();
+		} );
 
 		file.AddSeparator();
 
@@ -286,22 +295,19 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 	private void OnPropertyUpdated( SerializedProperty serializedProperty )
 	{
-		// TODO
-		/*
-		_preview.PostProcessing = _graph.Domain == ShaderDomain.PostProcess;
+		_preview.EnablePostProcessing = _graph.Domain == ShaderDomain.PostProcess;
 
 		if ( _properties.Target is BaseNodePlus node )
 		{
-			_graphView.UpdateNode( node );
+			//_graphView.UpdateNode( node );
 		}
 
 		// Reload shader template
-		if ( _properties.Target is ShaderGraphPlus && serializedProperty.IsPropertyName( nameof( ShaderGraphPlus.ShaderType ) ) )
+		if ( _properties.Target is ShaderGraphPlus.ShaderGraphPlus && serializedProperty.IsPropertyName( nameof( ShaderGraphPlus.ShaderGraphPlus.ShaderType ) ) )
 		{
 			LoadShaderTypeInfo();
 		}
-		*/
-
+	
 		var shouldEvaluate = _properties.Target is not CommentNode;
 		SetDirty( shouldEvaluate );
 	}
@@ -343,7 +349,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		// Must be done before setting _graphView.Graph and _blackboardView.Graph
 		// or else some nodes, namely the 'Result' node may break valid inputs upon it getting initialized via GraphView.RebuildFromGraph().
-		//LoadShaderTypeInfo(); // TODO
+		LoadShaderTypeInfo();
 
 		_graphView.Graph = _graph;
 		_blackboard.Graph = _graph;
@@ -352,8 +358,8 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		UpdateTitle();
 
 		// TODO
-		//_preview.Model = null;
-		//_preview.Tint = Color.White;
+		_preview.Model = null;
+		_preview.Tint = Color.White;
 		_undoStack.Clear();
 		_generatedCode = "";
 		//_generatedCodeTextView.Value = "";
@@ -428,7 +434,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 			graph.Title = asset.Name;
 		}
 
-		//_preview.Model = string.IsNullOrWhiteSpace( graph.Model ) ? null : Model.Load( graph.Model );
+		_preview.Model = string.IsNullOrWhiteSpace( graph.Model ) ? null : Model.Load( graph.Model );
 		_preview.LoadSettings( new() );
 
 		_asset = asset;
@@ -437,7 +443,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		// Must be done before setting _graphView.Graph and _blackboardView.Graph
 		// or else some nodes, namely the 'Result' node may break valid inputs upon it getting initialized via GraphView.RebuildFromGraph().
-		//LoadShaderTypeInfo(); // TOOD
+		LoadShaderTypeInfo();
 
 		_graphView.Graph = _graph;
 		_blackboard.Graph = _graph;
@@ -450,6 +456,43 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		_generatedCode = "";
 		//_generatedCodeTextView.Value = "";
 		//Selection.Set( _graph );
+	}
+
+	private void LoadShaderTypeInfo()
+	{
+		if ( _graph is null ) return;
+
+		if ( _graph.HasTemplate )
+		{
+			var templateAsset = AssetSystem.FindByPath( _graph.ShaderType );
+
+			_shaderTemplate = new ShaderTemplateResource();
+
+			if ( _shaderTemplate.Deserialize( System.IO.File.ReadAllText( templateAsset.AbsolutePath ), System.IO.Path.GetFileName( templateAsset.AbsolutePath ) ) )
+			{
+				_graph.ShaderTypeInfo = _shaderTemplate;
+				_graph.ValidateShaderTypeInfo();
+			}
+			else
+			{
+				_shaderTemplate = null;
+				_graph.ShaderTypeInfo = new ShaderGraphPlus.ShaderTemplate.ShaderTypeInfo();
+			}
+		}
+		else
+		{
+			_shaderTemplate = null;
+
+			_graph.ShaderTypeInfo = _graph.ShaderType switch
+			{
+				"Surface" => ShaderTemplateSurface.ShaderTypeInfo,
+				"Sky" => ShaderTemplateSky.ShaderTypeInfo,
+				"PostProcess" => ShaderTemplatePostProcess.ShaderTypeInfo,
+				_ => ShaderTemplateSurface.ShaderTypeInfo,
+			};
+
+			_graph.ValidateShaderTypeInfo();
+		}
 	}
 
 	public void SaveAs()
@@ -465,6 +508,9 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	private bool SaveInternal( bool saveAs )
 	{
 		SGPLogger.Info( $"TODO : Save Graph{(saveAs ? " As" : "")}" );
+
+		//AddToRecentFiles( savePath );
+		//EditorEvent.Run( ShaderGraphPlusGlobals.EditorEvents.SubgraphUpdate, _asset.RelativePath );
 
 		return true;
 	}
@@ -685,8 +731,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		if ( !_preview.IsValid() )
 			return;
 
-		// TODO
-		//_preview.Material = Material.Load( "materials/core/shader_editor.vmat" );
+		_preview.Material = ShaderGraphPlusGlobals.Preview.DefaultMaterial;
 	}
 
 	private void UpdateTitle()
@@ -773,9 +818,33 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		Compile();
 
-		//_preview.LoadSettings( _graph.PreviewSettings );
-		_preview.LoadSettings( new() );
+		_preview.LoadSettings( _graph.PreviewSettings );
 
 		Log.Info( "ShaderGraphPlus hotloaded!" );
+	}
+
+	[Event( ShaderGraphPlusGlobals.EditorEvents.SubgraphUpdate )]
+	internal void OnSubgraphUpdate( string updatedPath )
+	{
+		foreach ( var node in _graph.Nodes )
+		{
+			if ( node is SubgraphNode subgraphNode )
+			{
+				subgraphNode.Subgraph = null;
+				subgraphNode.OnNodeCreated();
+			}
+		}
+
+		GeneratePreviewCode();
+	}
+
+	[Event( ShaderGraphPlusGlobals.EditorEvents.ShaderTemplateUpdate )]
+	internal void OnShaderTemplateUpdate( string templatePath )
+	{
+		if ( _graph.HasTemplate && _graph.ShaderType == templatePath )
+		{
+			LoadShaderTypeInfo();
+			SetDirty();
+		}
 	}
 }

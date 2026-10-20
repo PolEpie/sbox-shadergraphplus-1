@@ -162,7 +162,7 @@ public class MainWindow : DockWindow
 		if ( !_preview.IsValid() )
 			return;
 
-		_preview.Material = Material.Load( "materials/core/shader_editor.vmat" );
+		_preview.Material = ShaderGraphPlusGlobals.Preview.DefaultMaterial;
 	}
 
 	public void OnDeselected( object oldSelection )

@@ -7,6 +7,11 @@ internal static class ShaderGraphPlusGlobals
 		internal const int NoNodePreviewID = 0;
 	}
 
+	internal static class Preview
+	{
+		internal static Material DefaultMaterial = Material.Load( "materials/core/shader_editor.vmat" );
+	}
+
 	internal static class BlackboardGlobals
 	{
 		internal const string EmptyGroupName = "General";

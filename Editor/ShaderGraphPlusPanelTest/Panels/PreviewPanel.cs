@@ -91,7 +91,20 @@ public sealed partial class PreviewPanel : Panel
 	
 	private int _stageId;
 
-	public bool EnablePostProcessing { get; set; }
+	public bool EnablePostProcessing
+	{
+		get;
+		set
+		{
+			if ( field == value )
+				return;
+
+			field = value;
+
+			UpdateMaterial();
+			UpdatePostProcessing();
+		}
+	}
 
 	public bool EnableNodePreview
 	{
@@ -201,7 +214,7 @@ public sealed partial class PreviewPanel : Panel
 
 	public Material Material
 	{
-		get;
+		get => (field) ?? ShaderGraphPlusGlobals.Preview.DefaultMaterial;
 		set
 		{
 			field = value;
