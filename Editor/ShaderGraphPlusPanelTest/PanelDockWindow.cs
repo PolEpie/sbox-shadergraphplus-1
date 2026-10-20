@@ -77,6 +77,8 @@ public class PanelDockWindow : Panel
 
 	public override void OnDeleted()
 	{
+		// Registered in the constructor - a closed window mustn't keep getting events like hotload
+		EditorEvent.Unregister( this );
 		DockWindows?.Dispose();
 		_floatingRoots.Clear();
 		base.OnDeleted();

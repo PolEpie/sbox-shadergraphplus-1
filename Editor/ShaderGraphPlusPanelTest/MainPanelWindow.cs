@@ -917,6 +917,9 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 	[EditorEvent.Hotload]
 	private void OnHotload()
 	{
+		// A closed window can still be registered - one closed by the old code, before this hotload
+		if ( !IsValid || IsDeleting ) return;
+
 		StyleSheet.AddInline( ShaderGraphPlusStyleSheets.ShaderGraphPlusScss, "shadergraphplus_style" );
 
 		// Rebuilding adds a new title bar, toolbar and dock host, so drop the old ones and their floating windows first
