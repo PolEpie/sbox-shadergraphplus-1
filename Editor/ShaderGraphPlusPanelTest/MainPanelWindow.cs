@@ -277,7 +277,7 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 		}
 
 		_generatedCodeView = new GeneratedCodePanel();
-	
+
 		_statusBar = AddChild( new StatusBarPanel() );
 
 		foreach ( var value in _boolAttributes )
@@ -344,12 +344,12 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 		DockHost.Dock( "console", "output", position: DockPosition.Center, fraction: 0.26f );
 
 		DockHost.Dock( "palette", "output", position: DockPosition.Center, fraction: 0.24f );
-		
+
 		DockHost.Dock( "generatedcode", "output", position: DockPosition.Center, fraction: 0.26f );
 		DockHost.Dock( "properties", "preview", DockPosition.Bottom, 0.55f );
 
 		DockHost.Activate( "output" );
-		
+
 		_defaultLayout = DockWindows.State;
 		_savedLayout = _defaultLayout;
 
@@ -524,7 +524,7 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 		GeneratePreviewCode();
 
 		var generatedShaderPath = System.IO.Path.ChangeExtension( _asset.AbsolutePath, ".shader" );
-		
+
 		if ( System.IO.Path.Exists( generatedShaderPath ) )
 		{
 			_generatedCodeView.Code = System.IO.File.ReadAllText( generatedShaderPath );

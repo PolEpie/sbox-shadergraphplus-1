@@ -324,12 +324,12 @@ public sealed partial class ShaderGraphPlusPanelTest
 		if ( _generatedCode != code )
 		{
 			_generatedCode = code;
-			
+
 			if ( _generatedCodeView != null )
 			{
 				_generatedCodeView.Code = _generatedCode;
 			}
-		
+
 			if ( _autoCompile )
 			{
 				Compile();
