@@ -87,6 +87,7 @@ public class MainWindow : DockWindow
 
 	private bool _isCompiling = false;
 	private bool _isPendingCompile = false;
+	private System.Threading.CancellationTokenSource _compileCancel;
 	private RealTimeSince _timeSinceCompile;
 
 	private Menu _recentFilesMenu;
@@ -316,7 +317,9 @@ public class MainWindow : DockWindow
 
 		if ( _isCompiling )
 		{
+			// The running compile is for a graph that no longer exists; stop it and compile the new one
 			_isPendingCompile = true;
+			_compileCancel?.Cancel();
 
 			return;
 		}
@@ -344,19 +347,31 @@ public class MainWindow : DockWindow
 			ConsoleOutput = true
 		};
 
-		var result = await EditorUtility.CompileShader( Editor.FileSystem.Root, path, options );
+		_compileCancel = new System.Threading.CancellationTokenSource();
+		var token = _compileCancel.Token;
+		var success = false;
 
-		if ( result.Success )
+		try
 		{
-			var asset = AssetSystem.RegisterFile( Editor.FileSystem.Root.GetFullPath( path ) );
+			var result = await EditorUtility.CompileShader( Editor.FileSystem.Root, path, options, token );
+			success = result.Success;
 
-			while ( !asset.IsCompiledAndUpToDate )
+			if ( success )
 			{
-				await Task.Yield();
+				var asset = AssetSystem.RegisterFile( Editor.FileSystem.Root.GetFullPath( path ) );
+
+				while ( !asset.IsCompiledAndUpToDate )
+				{
+					await Task.Yield();
+				}
 			}
 		}
+		catch ( OperationCanceledException )
+		{
+			// Superseded by a newer graph, which OnCompileFinished compiles next
+		}
 
-		MainThread.Queue( () => OnCompileFinished( result.Success ? 0 : 1 ) );
+		MainThread.Queue( () => OnCompileFinished( success ? 0 : 1 ) );
 	}
 
 	private readonly List<string> _shaderCompileErrors = new();
