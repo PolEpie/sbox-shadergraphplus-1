@@ -271,6 +271,9 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 			}
 		}
 
+
+		_statusBar = AddChild( new StatusBarPanel() );
+
 		DockHost.Register( "graph", "Graph", _graphView, canClose: false, icon: "account_tree" );
 		DockHost.Register( "palette", "Palette", _palette, icon: "palette" );
 		DockHost.Register( "blackboard", "Blackboard", _blackboard, icon: "format_list_bulleted" );
@@ -738,14 +741,36 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		WindowTitle.Text = $"Shader Graph Plus - {_asset?.Path ?? "untitled"}{(_dirty ? "*" : "")}";
 	}
 
+	public void ShowStatusBarMessage( string text, float seconds = 5f )
+	{
+		if ( _statusBar == null )
+			return;
+
+		_statusBar.ShowMessage( text, seconds );
+	}
+
+	public void ClearStatusBarMessage()
+	{
+		if ( _statusBar == null )
+			return;
+
+		_statusBar.ClearMessage();
+	}
+
+	private void StatusTip( Panel panel, string text, float seconds = 5f )
+	{
+		panel.AddEventListener( "onmouseover", () => ShowStatusBarMessage( text, seconds ) );
+		panel.AddEventListener( "onmouseout", () => ClearStatusBarMessage() );
+	}
+
 	void RefreshRecentFiles()
 	{
 		_recentFilesMenu.Enabled = _recentFiles.Count > 0;
 
 		_recentFilesMenu.Clear();
 
-		_recentFilesMenu.AddOption( "Clear recent files", null, ClearRecentFiles );
-		//.StatusTip = "Clear recent files";
+		var clearRecentFiles = _recentFilesMenu.AddOption( "Clear recent files", null, ClearRecentFiles );
+		StatusTip( clearRecentFiles, "Clear recent files", -1f );
 
 		_recentFilesMenu.AddSeparator();
 
@@ -759,8 +784,8 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 			var filePath = _recentFiles[i];
 
-			_recentFilesMenu.AddOption( $"{++fileCount} - {filePath}", null, () => PromptSave( () => Open( filePath ) ) );
-			//.StatusTip = $"Open {filePath}";
+			var option = _recentFilesMenu.AddOption( $"{++fileCount} - {filePath}", null, () => PromptSave( () => Open( filePath ) ) );
+			StatusTip( option, $"Open {filePath}", -1f );
 		}
 	}
 
