@@ -27,6 +27,9 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	private PalettePanel _palette;
 	private BlackboardPanel _blackboard;
 	private PreviewPanel _preview;
+	private GeneratedCodePanel _generatedCodeView;
+	private StatusBarPanel _statusBar;
+
 
 	private ShaderGraphPlus.ShaderGraphPlus _graph;
 	private ShaderTemplateResource _shaderTemplate;
@@ -271,7 +274,8 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 			}
 		}
 
-
+		_generatedCodeView = new GeneratedCodePanel();
+	
 		_statusBar = AddChild( new StatusBarPanel() );
 
 		DockHost.Register( "graph", "Graph", _graphView, canClose: false, icon: "account_tree" );
@@ -281,16 +285,18 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		DockHost.Register( "preview", "Preview", _preview, icon: "photo" );
 		DockHost.Register( "properties", "Properties", _properties, icon: "tune" );
 		DockHost.Register( "console", "Console", () => new ConsolePanel(), icon: "text_snippet" );
+		DockHost.Register( "generatedcode", "Generated Code", _generatedCodeView, icon: "text_snippet" );
 
 		DockHost.Dock( "graph" );
 		DockHost.Dock( "palette", position: DockPosition.Left, fraction: 0.24f );
 		DockHost.Dock( "blackboard", "palette", position: DockPosition.Center, fraction: 0.18f );
 		DockHost.Dock( "preview", position: DockPosition.Right, fraction: 0.26f );
 		DockHost.Dock( "console", position: DockPosition.Bottom, fraction: 0.26f );
+		DockHost.Dock( "generatedcode", "console", position: DockPosition.Center, fraction: 0.26f );
 		DockHost.Dock( "properties", "preview", DockPosition.Bottom, 0.55f );
 
 		DockHost.Activate( "palette" );
-
+		
 		_defaultLayout = DockWindows.State;
 		_savedLayout = _defaultLayout;
 	}
@@ -355,7 +361,6 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		_graphView.Graph = _graph;
 		_blackboard.Graph = _graph;
-		UpdateOutputPlugTypes();
 
 		UpdateTitle();
 
@@ -364,7 +369,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		_preview.Tint = Color.White;
 		_undoStack.Clear();
 		_generatedCode = "";
-		//_generatedCodeTextView.Value = "";
+		_generatedCodeView.Code = "";
 		//Selection.Set( _graph );
 
 		// TODO
@@ -449,14 +454,13 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		_graphView.Graph = _graph;
 		_blackboard.Graph = _graph;
-		UpdateOutputPlugTypes();
 
 		UpdateTitle();
 
 		// TODO
 		_undoStack.Clear();
 		_generatedCode = "";
-		//_generatedCodeTextView.Value = "";
+		_generatedCodeView.Code = "";
 		//Selection.Set( _graph );
 	}
 
@@ -626,58 +630,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	{
 		SGPLogger.Info( $"TODO : GeneratePreviewCode" );
 
-		UpdateOutputPlugTypes();
-
 		return "";
-	}
-
-	/// <summary>
-	/// Give each output plug the type the compiler works out for it, like the Qt editor does while
-	/// generating preview code. Outputs are declared as <see cref="NodeResult.Func"/>, which has no
-	/// colour of its own - reroutes and generic nodes would stay grey, and so would their wires.
-	/// </summary>
-	private void UpdateOutputPlugTypes()
-	{
-		if ( _graph is null || !_graphView.IsValid() ) return;
-
-		var features = new Dictionary<string, ShaderFeatureBase>();
-		foreach ( var feature in _graph.Parameters.OfType<IBlackboardShaderFeatureParameter>() )
-		{
-			ShaderFeatureBase shaderFeature = feature switch
-			{
-				ShaderFeatureBooleanParameter b => new ShaderFeatureBoolean { Name = b.Name, HeaderName = b.HeaderName, Description = b.Description },
-				ShaderFeatureEnumParameter e => new ShaderFeatureEnum { Name = e.Name, HeaderName = e.HeaderName, Description = e.Description, Options = e.Options },
-				_ => null
-			};
-
-			if ( shaderFeature is { IsValid: true } ) features.TryAdd( shaderFeature.Name, shaderFeature );
-		}
-
-		var compiler = new GraphCompiler( _graph, null, features, true );
-
-		foreach ( var node in _graph.Nodes.OfType<BaseNodePlus>() )
-		{
-			if ( _graphView.FindNode( node ) is not { } panel ) continue;
-
-			foreach ( var plug in panel.Outputs )
-			{
-				if ( plug.Inner is not BasePlug { Info.Property: { } property } || property.PropertyType != typeof( NodeResult.Func ) ) continue;
-				if ( property.GetCustomAttribute<BaseNodePlus.OutputAttribute>() is null ) continue;
-
-				NodeResult result;
-				try
-				{
-					result = compiler.Result( new NodeInput { Identifier = node.Identifier, Output = property.Name } );
-				}
-				catch ( Exception )
-				{
-					// A node that can't compile yet keeps its declared type
-					continue;
-				}
-
-				if ( ComponentType( result ) is { } type ) plug.PropertyType = type;
-			}
-		}
 	}
 
 	/// <summary>
