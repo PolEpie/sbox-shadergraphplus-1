@@ -948,6 +948,7 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 				wasDirty = true;
 			}
 		}
+
 		if ( wasDirty )
 		{
 			_graphView.NodeValueChanged();
