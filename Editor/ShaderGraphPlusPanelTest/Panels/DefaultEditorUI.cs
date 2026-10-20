@@ -35,6 +35,12 @@ public class DefaultEditorUI : EngineGraph.NodeValueEditor
 		plug.Style.Overflow = OverflowMode.Visible;
 	}
 
+	/// <summary>
+	/// Ignore the plug's in-node rect: <see cref="Tick"/> sets the bubble bounds. Taking the rect here
+	/// moved the bubble into the node for a frame whenever the node relaid out, such as on a value change.
+	/// </summary>
+	public override void Place( Rect rect ) { }
+
 	public override void Tick()
 	{
 		base.Tick();
