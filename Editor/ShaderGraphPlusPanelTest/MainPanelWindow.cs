@@ -4,18 +4,15 @@ using Sandbox.Rendering;
 using Sandbox.UI;
 using Sandbox.UI.Construct;
 using ShaderGraphPlus;
+using ShaderGraphPlus.Internal;
 
 namespace ShaderGraphPlusPanelTest;
 
-public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
+public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 {
 	private bool _dirty = false;
 	private bool _autoCompile = true;
 	private string _generatedCode;
-
-	private bool _isCompiling = false;
-	private bool _isPendingCompile = false;
-	private RealTimeSince _timeSinceCompile;
 
 	private Sandbox.UI.Menu _recentFilesMenu;
 	private readonly List<string> _recentFiles = new();
@@ -29,6 +26,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	private PreviewPanel _preview;
 	private GeneratedCodePanel _generatedCodeView;
 	private StatusBarPanel _statusBar;
+	private OutputPanel _output;
 
 
 	private ShaderGraphPlus.ShaderGraphPlus _graph;
@@ -231,6 +229,9 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 			_properties.Target = node;
 		};
+
+		_output = new OutputPanel();
+
 		_palette = new PalettePanel( IsSubgraph );
 
 		// After the graph view's handler: it clears the graph selection, which shows the graph,
@@ -278,6 +279,51 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	
 		_statusBar = AddChild( new StatusBarPanel() );
 
+		foreach ( var value in _boolAttributes )
+		{
+			_preview.SetAttribute( value.Key, value.Value );
+		}
+
+		foreach ( var value in _floatAttributes )
+		{
+			_preview.SetAttribute( value.Key, value.Value );
+		}
+
+		foreach ( var value in _float2Attributes )
+		{
+			_preview.SetAttribute( value.Key, value.Value );
+		}
+
+		foreach ( var value in _float3Attributes )
+		{
+			_preview.SetAttribute( value.Key, value.Value );
+		}
+
+		foreach ( var value in _float4Attributes )
+		{
+			_preview.SetAttribute( value.Key, value.Value );
+		}
+
+		foreach ( var value in _samplerStateAttributes )
+		{
+			_preview.SetAttribute( value.Key, value.Value );
+		}
+
+		foreach ( var value in _textureAttributes )
+		{
+			_preview.SetAttribute( value.Key, value.Value );
+		}
+
+		foreach ( var value in _dynamicComboIntAttributes )
+		{
+			_preview.SetDynamicCombo( value.Key, value.Value );
+		}
+
+		foreach ( var value in _shaderFeatures )
+		{
+			_preview.SetFeature( value.Key, value.Value );
+		}
+
 		DockHost.Register( "graph", "Graph", _graphView, canClose: false, icon: "account_tree" );
 		DockHost.Register( "palette", "Palette", _palette, icon: "palette" );
 		DockHost.Register( "blackboard", "Blackboard", _blackboard, icon: "format_list_bulleted" );
@@ -285,20 +331,28 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		DockHost.Register( "preview", "Preview", _preview, icon: "photo" );
 		DockHost.Register( "properties", "Properties", _properties, icon: "tune" );
 		DockHost.Register( "console", "Console", () => new ConsolePanel(), icon: "text_snippet" );
+		DockHost.Register( "output", "Output", _output, icon: "notes" );
 		DockHost.Register( "generatedcode", "Generated Code", _generatedCodeView, icon: "text_snippet" );
 
 		DockHost.Dock( "graph" );
-		DockHost.Dock( "palette", position: DockPosition.Left, fraction: 0.24f );
-		DockHost.Dock( "blackboard", "palette", position: DockPosition.Center, fraction: 0.18f );
-		DockHost.Dock( "preview", position: DockPosition.Right, fraction: 0.26f );
-		DockHost.Dock( "console", position: DockPosition.Bottom, fraction: 0.26f );
-		DockHost.Dock( "generatedcode", "console", position: DockPosition.Center, fraction: 0.26f );
+		DockHost.Dock( "preview", position: DockPosition.Left, fraction: 0.26f );
+
+		DockHost.Dock( "output", "graph", position: DockPosition.Bottom, fraction: 0.26f );
+		DockHost.Dock( "blackboard", "output", position: DockPosition.Right, fraction: 0.18f );
+
+		DockHost.Dock( "console", "output", position: DockPosition.Center, fraction: 0.26f );
+
+		DockHost.Dock( "palette", "output", position: DockPosition.Center, fraction: 0.24f );
+		
+		DockHost.Dock( "generatedcode", "output", position: DockPosition.Center, fraction: 0.26f );
 		DockHost.Dock( "properties", "preview", DockPosition.Bottom, 0.55f );
 
-		DockHost.Activate( "palette" );
+		DockHost.Activate( "output" );
 		
 		_defaultLayout = DockWindows.State;
 		_savedLayout = _defaultLayout;
+
+		Compile();
 	}
 
 	private void OnPropertyUpdated( SerializedProperty serializedProperty )
@@ -307,7 +361,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		if ( _properties.Target is BaseNodePlus node )
 		{
-			//_graphView.UpdateNode( node );
+			_graphView.UpdateNode( node );
 		}
 
 		// Reload shader template
@@ -319,6 +373,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		var shouldEvaluate = _properties.Target is not CommentNode;
 		SetDirty( shouldEvaluate );
 	}
+
 	private void PromptSave( Action action )
 	{
 		if ( !_dirty )
@@ -346,8 +401,6 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 	public void CreateNew()
 	{
-		SGPLogger.Info( $"TODO : New Graph" );
-
 		_asset = null;
 		_graph = new()
 		{
@@ -419,8 +472,6 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 	public void Open( string path, bool addToPath = true )
 	{
-		SGPLogger.Info( $"TODO : Open Graph" );
-
 		var asset = AssetSystem.FindByPath( path );
 
 		if ( asset == null )
@@ -442,7 +493,7 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		}
 
 		_preview.Model = string.IsNullOrWhiteSpace( graph.Model ) ? null : Model.Load( graph.Model );
-		_preview.LoadSettings( new() );
+		_preview.LoadSettings( _graph.PreviewSettings );
 
 		_asset = asset;
 		_graph = graph;
@@ -457,11 +508,30 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		UpdateTitle();
 
-		// TODO
 		_undoStack.Clear();
 		_generatedCode = "";
 		_generatedCodeView.Code = "";
 		//Selection.Set( _graph );
+
+		//_output.ClearErrors();
+		//_output.ClearWarnings();
+
+		ClearAttributes();
+
+		AddToRecentFiles( path );
+
+		GeneratePreviewCode();
+
+		var generatedShaderPath = System.IO.Path.ChangeExtension( _asset.AbsolutePath, ".shader" );
+		
+		if ( System.IO.Path.Exists( generatedShaderPath ) )
+		{
+			_generatedCodeView.Code = System.IO.File.ReadAllText( generatedShaderPath );
+		}
+		else
+		{
+			DockHost.Activate( "output" );
+		}
 	}
 
 	private void LoadShaderTypeInfo()
@@ -621,16 +691,83 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		SGPLogger.Info( $"TODO : Select All" );
 	}
 
-	private void Compile()
+	private void OnAttribute( string name, object value )
 	{
-		SGPLogger.Info( $"TODO : Compile Graph" );
-	}
+		if ( value == null )
+			return;
 
-	private string GeneratePreviewCode()
-	{
-		SGPLogger.Info( $"TODO : GeneratePreviewCode" );
 
-		return "";
+		switch ( value )
+		{
+			case Color v:
+				if ( _float4Attributes.TryAdd( name, v ) )
+				{
+					_preview?.SetAttribute( name, v );
+				}
+				break;
+			case Vector4 v:
+				if ( _float4Attributes.TryAdd( name, v ) )
+				{
+					_preview?.SetAttribute( name, (Color)v );
+				}
+				break;
+			case Vector3 v:
+				if ( _float3Attributes.TryAdd( name, v ) )
+				{
+					_preview?.SetAttribute( name, v );
+				}
+				break;
+			case Vector2 v:
+				if ( _float2Attributes.TryAdd( name, v ) )
+				{
+					_preview?.SetAttribute( name, v );
+				}
+				break;
+			case float v:
+				if ( _floatAttributes.TryAdd( name, v ) )
+				{
+					_preview?.SetAttribute( name, v );
+				}
+				break;
+			case int v:
+				if ( _intAttributes.TryAdd( name, v ) )
+				{
+					_preview?.SetAttribute( name, v );
+				}
+				break;
+			case bool v:
+				if ( _boolAttributes.TryAdd( name, v ) )
+				{
+					_preview?.SetAttribute( name, v );
+				}
+				break;
+			case Texture v:
+				if ( _textureAttributes.TryAdd( name, v ) )
+				{
+					_preview?.SetAttribute( name, v );
+				}
+				break;
+			case Sampler v:
+				if ( _samplerStateAttributes.TryAdd( name, (SamplerState)v ) )
+				{
+					_preview?.SetAttribute( name, (SamplerState)v );
+				}
+				break;
+			case ShaderFeatureWrapper v:
+				if ( _shaderFeatures.TryAdd( v.FeatureName, v.Value ) )
+				{
+					_preview?.SetFeature( v.FeatureName, v.Value );
+				}
+				break;
+			case DynamicComboWrapper v:
+				if ( _dynamicComboIntAttributes.TryAdd( v.ComboName, v.Value ) )
+				{
+					_preview?.SetDynamicCombo( v.ComboName, v.Value );
+				}
+				break;
+			default:
+				throw new InvalidOperationException( $"Unsupported attribute type: \"{value.GetType()}\"" );
+		}
 	}
 
 	/// <summary>
@@ -790,6 +927,29 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		_preview.LoadSettings( _graph.PreviewSettings );
 
 		Log.Info( "ShaderGraphPlus hotloaded!" );
+	}
+
+	public override void Tick()
+	{
+		base.Tick();
+
+		CheckForChanges();
+	}
+
+	private void CheckForChanges()
+	{
+		bool wasDirty = false;
+		foreach ( var node in _graph.Nodes )
+		{
+			if ( node is ShaderNodePlus shaderNode && shaderNode.IsDirty )
+			{
+				shaderNode.IsDirty = false;
+				wasDirty = true;
+			}
+		}
+		if ( wasDirty )
+		{
+		}
 	}
 
 	[Event( ShaderGraphPlusGlobals.EditorEvents.SubgraphUpdate )]
