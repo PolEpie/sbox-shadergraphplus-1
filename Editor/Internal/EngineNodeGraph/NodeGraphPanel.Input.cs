@@ -37,6 +37,13 @@ public partial class NodeGraphPanel
 			return;
 		}
 
+		if ( e.HasCtrl && e.Button == "f" && Graph is not null && !IsBoxSelecting && !TextEntryFocused )
+		{
+			OpenFindMenu();
+			e.StopPropagation = true;
+			return;
+		}
+
 		base.OnButtonTyped( e );
 	}
 
