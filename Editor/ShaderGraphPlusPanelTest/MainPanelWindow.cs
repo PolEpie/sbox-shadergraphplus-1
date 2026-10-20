@@ -80,7 +80,6 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		BuildMenuBar();
 		CreateToolBar();
-
 		CreateUI();
 
 		CreateNew();
