@@ -9,20 +9,10 @@ using Label = Sandbox.UI.Label;
 
 namespace ShaderGraphPlusPanelTest;
 
-/// <summary>
-/// The Preview dock: a lit model in an SGP-owned scene, seen through an orbit camera over an
-/// editor-style grid that can be switched off. Left drag orbits, right drag looks around,
-/// middle drag pans, the wheel zooms. Once clicked (so it has the keyboard), WASD flies,
-/// Q and E go down and up, and Shift goes faster.
-/// The overlay's toolbar picks the model, like the Qt preview: a box, a sphere, a plane, or any
-/// model asset. It also pauses and speeds up the shader's preview time.
-/// </summary>
 public sealed partial class PreviewPanel : Panel
 {
 	private const string BoxModel = "models/dev/box.vmdl";
 	private const string PlaneModel = "models/dev/plane.vmdl";
-	private const string GridCookie = "shadergraphplus.preview.grid";
-	private const string LightCookie = "shadergraphplus.preview.light";
 
 	/// <summary>
 	/// What the preview model is. The built-ins light up their toolbar button; anything picked from
@@ -48,23 +38,29 @@ public sealed partial class PreviewPanel : Panel
 	private readonly ModelRenderer _modelRenderer;
 	private readonly GameObject _skyObject;
 	private readonly SkyBox2D _sky;
+	private readonly GameObject _lightObject;
+	readonly GameObject _cameraObject;
+	readonly CameraComponent _camera;
 
-	private readonly Panel _lightButton;
-	private readonly GameObject _light;
 	private readonly Dictionary<Primitive, Panel> _modelButtons = new();
 	private readonly Label _playIcon;
 	private readonly Label _speedText;
 	private readonly Panel _playButton;
 	private readonly Panel _speedButton;
+	private readonly Panel _lightButton;
 	private readonly Panel _settingsButton;
+
 	private Panel _gridButton;
-	private Panel _showSkyButton;
+	private Panel _skyButton;
 	private Sandbox.UI.Menu _speedMenu;
 	private Sandbox.UI.Menu _settingsMenu;
 
+	private int _stageId;
+	private float _previewTime;
 	private readonly Material _defaultSkyMaterial;
 
-	private float _previewTime;
+	private Model _sphere;
+	private Primitive _primitive;
 
 	private Vector3 _target;
 	private Angles _angles = new( 25, 135, 0 );
@@ -72,17 +68,16 @@ public sealed partial class PreviewPanel : Panel
 
 	private MouseButtons? _dragging;
 
-	/// <summary>How far the fly keys move the camera per second, as a share of its distance to the orbit point.</summary>
+	/// <summary>
+	/// How far the fly keys move the camera per second,
+	/// as a share of its distance to the orbit point.
+	/// </summary>
 	private const float FlySpeed = 0.5f;
 
-	/// <summary>How much faster flying is with Shift held.</summary>
+	/// <summary>
+	/// ow much faster flying is with Shift held.
+	/// </summary>
 	private const float FlyBoost = 4.0f;
-
-	private Model _sphere;
-
-	private Primitive _primitive;
-
-	private int _stageId;
 
 	public bool EnablePostProcessing
 	{
@@ -116,17 +111,7 @@ public sealed partial class PreviewPanel : Panel
 	public bool ShowGrid
 	{
 		get;
-		set
-		{
-			field = value;
-
-			if ( _gridButton != null )
-			{
-				_gridButton.SetClass( "on", value );
-			}
-
-			EditorCookie.Set( GridCookie, value );
-		}
+		set;
 	}
 
 	/// <summary>
@@ -135,12 +120,15 @@ public sealed partial class PreviewPanel : Panel
 	/// </summary>
 	public bool ShowLight
 	{
-		get => _light.Enabled;
+		get => _lightObject.Enabled;
 		set
 		{
-			_light.Enabled = value;
+			_lightObject.Enabled = value;
+
+			if ( _lightButton == null )
+				return;
+
 			_lightButton.SetClass( "on", value );
-			EditorCookie.Set( LightCookie, value );
 		}
 	}
 
@@ -156,6 +144,9 @@ public sealed partial class PreviewPanel : Panel
 				return;
 
 			_sky.Enabled = value;
+
+			//if ( _skyButton == null )
+			//	return;
 		}
 	}
 
@@ -197,11 +188,9 @@ public sealed partial class PreviewPanel : Panel
 			UpdatePostProcessing();
 			SetAllAttributes();
 
-			//UpdateAnimationCombo();
+			//UpdateAnimationCombo(); // TODO
 
 			OnModelChanged?.Invoke( value );
-
-			//_modelRenderer.Attributes.SetCombo( "D_RENDER_BACKFACES", _renderBackfaces );
 		}
 	}
 
@@ -313,10 +302,10 @@ public sealed partial class PreviewPanel : Panel
 		using ( _previewScene.Push() )
 		{
 			// Lit renderers need a light to be seen
-			_light = _previewScene.CreateObject();
-			_light.Name = "Preview Light";
-			_light.WorldRotation = Rotation.From( 50, 30, 0 );
-			_light.Components.Create<DirectionalLight>().LightColor = Color.White * 1.5f;
+			_lightObject = _previewScene.CreateObject();
+			_lightObject.Name = "Preview Light";
+			_lightObject.WorldRotation = Rotation.From( 50, 30, 0 );
+			_lightObject.Components.Create<DirectionalLight>().LightColor = Color.White * 1.5f;
 
 			_modelObject = _previewScene.CreateObject();
 			_modelObject.Name = "Preview Model";
@@ -325,55 +314,62 @@ public sealed partial class PreviewPanel : Panel
 			_skyObject = _previewScene.CreateObject();
 			_skyObject.Name = "Preview Sky";
 			_sky = _skyObject.Components.Create<SkyBox2D>();
-			_defaultSkyMaterial = _sky.SkyMaterial;
-		}
 
+			_defaultSkyMaterial = _sky.SkyMaterial;
+
+			_cameraObject = _previewScene.CreateObject();
+			_cameraObject.Name = "Preview Camera";
+			_camera = _cameraObject.Components.Create<CameraComponent>();
+			_camera.BackgroundColor = BackgroundColor;
+			_camera.ZFar = 10000;
+		}
+		
 		_scenePanel = AddChild<ScenePanel>();
 		_scenePanel.AddClass( "scene" );
 		_scenePanel.RenderScene = _previewScene;
-		_scenePanel.Camera.World = _previewScene.SceneWorld;
-		_scenePanel.Camera.BackgroundColor = new Color( 0.07f, 0.075f, 0.09f );
-		_scenePanel.Camera.AmbientLightColor = new Color( 0.18f, 0.19f, 0.23f );
-		_scenePanel.Camera.ZFar = 10000;
+		//_scenePanel.Camera.World = _previewScene.SceneWorld;
+		//_scenePanel.Camera.BackgroundColor = new Color( 0.07f, 0.075f, 0.09f );
+		//_scenePanel.Camera.AmbientLightColor = new Color( 0.18f, 0.19f, 0.23f );
+		//_scenePanel.Camera.ZFar = 10000;
 		_scenePanel.Camera.Worlds.Add( _gizmo.World );
 
-		var bar = Add.Panel( "overlay" );
+		var overlayToolbar = Add.Panel( "overlay" );
 
-		AddModelButton( bar, Primitive.Box, "view_in_ar", "Box" );
-		AddModelButton( bar, Primitive.Sphere, "circle", "Sphere" );
-		AddModelButton( bar, Primitive.Plane, "square", "Plane" );
-		AddIconButton( bar, "folder_open", "Pick a model..." ).AddEventListener( "onclick", PickModel );
+		AddModelButton( overlayToolbar, Primitive.Box, "view_in_ar", "Box" );
+		AddModelButton( overlayToolbar, Primitive.Sphere, "circle", "Sphere" );
+		AddModelButton( overlayToolbar, Primitive.Plane, "square", "Plane" );
+		AddIconButton( overlayToolbar, "folder_open", "Pick a model..." ).AddEventListener( "onclick", PickModel );
 
-		bar.Add.Panel( "separator" );
+		overlayToolbar.Add.Panel( "separator" );
 
-		_playButton = AddIconButton( bar, "pause", "Pause shader time" );
+		_playButton = AddIconButton( overlayToolbar, "pause", "Pause shader time" );
 		_playButton.AddEventListener( "onclick", () => Paused = !Paused );
 		_playIcon = _playButton.GetChild( 0 ) as Label;
 
-		_speedButton = bar.Add.Panel( "iconbutton speed" );
+		_speedButton = overlayToolbar.Add.Panel( "iconbutton speed" );
 		_speedButton.Tooltip = "Shader time speed";
 		_speedButton.AddEventListener( "onmousedown", e => e.StopPropagation() );
 		_speedButton.AddEventListener( "onclick", OpenSpeedMenu );
 		_speedText = _speedButton.Add.Label( "1x", "speed-text" );
 
-		bar.Add.Panel( "spacer" );
+		overlayToolbar.Add.Panel( "spacer" );
 
-		_lightButton = AddIconButton( bar, "lightbulb", "Preview light" );
+		_lightButton = AddIconButton( overlayToolbar, "lightbulb", "Preview light" );
 		_lightButton.AddEventListener( "onclick", () => ShowLight = !ShowLight );
 
-		_settingsButton = AddIconButton( bar, "settings", "Preview Settings" );
+		_settingsButton = AddIconButton( overlayToolbar, "settings", "Preview Settings" );
 		_settingsButton.AddEventListener( "onclick", OpenSettings );
 
-		var footer = Add.Panel( "footer" );
-		footer.Add.Label( "LMB orbit · RMB look · MMB pan · WASD/QE fly · Shift fast · wheel zoom", "hint" );
+		var overlayFooter = Add.Panel( "footer" );
+		overlayFooter.Add.Label( "LMB orbit · RMB look · MMB pan · WASD/QE fly · Shift fast · wheel zoom", "hint" );
 
 		// The box is the default
 		ShowPrimitive( Primitive.Box );
 
 		Paused = false;
 		TimeScale = 1.0f;
-		ShowGrid = EditorCookie.Get( GridCookie, true );
-		ShowLight = EditorCookie.Get( LightCookie, true );
+		ShowGrid = true;
+		ShowLight = true;
 	}
 
 	private void CreateToolBar()
@@ -390,10 +386,9 @@ public sealed partial class PreviewPanel : Panel
 		_gridButton = _settingsMenu.AddOption( "Show grid", "grid_on", () =>
 		{
 			ShowGrid = !ShowGrid;
-
 		} );
 
-		_showSkyButton = _settingsMenu.AddOption( "Show Sky", "nights_stay", () =>
+		_skyButton = _settingsMenu.AddOption( "Show Sky", "nights_stay", () =>
 		{
 			ShowSkybox = !ShowSkybox;
 		} );
@@ -518,7 +513,9 @@ public sealed partial class PreviewPanel : Panel
 		_distance = MathF.Max( bounds.Size.Length * 1.75f, 40.0f );
 
 		foreach ( var (kind, button) in _modelButtons )
+		{
 			button.SetClass( "on", kind == primitive );
+		}
 	}
 
 	/// <summary>
@@ -534,18 +531,23 @@ public sealed partial class PreviewPanel : Panel
 		picker.Show();
 
 		if ( _primitive == Primitive.Custom && !string.IsNullOrEmpty( _model?.ResourcePath ) )
+		{
 			picker.SetSelection( _model.ResourcePath );
+		}
 	}
 
 	private void UseAsset( Asset asset )
 	{
 		if ( asset?.LoadResource<Model>() is { } model && _previewScene.IsValid() )
+		{
 			Model = model;
+		}
 	}
 
 	public override void Tick()
 	{
-		if ( !_previewScene.IsValid() ) return;
+		if ( !_previewScene.IsValid() )
+			return;
 
 		UpdateTime();
 		UpdateCamera();
@@ -580,8 +582,8 @@ public sealed partial class PreviewPanel : Panel
 		Fly();
 
 		var rotation = _angles.ToRotation();
-		_scenePanel.Camera.Rotation = rotation;
-		_scenePanel.Camera.Position = _target - rotation.Forward * _distance;
+		_cameraObject.WorldRotation = rotation;
+		_cameraObject.WorldPosition = _target - rotation.Forward * _distance;
 	}
 
 	void Turn( Vector2 delta )
@@ -597,7 +599,8 @@ public sealed partial class PreviewPanel : Panel
 	/// </summary>
 	void Fly()
 	{
-		if ( _held.Count == 0 ) return;
+		if ( _held.Count == 0 )
+			return;
 
 		var rotation = _angles.ToRotation();
 		var direction = Vector3.Zero;
@@ -609,10 +612,14 @@ public sealed partial class PreviewPanel : Panel
 		if ( _held.Contains( "e" ) ) direction += Vector3.Up;
 		if ( _held.Contains( "q" ) ) direction -= Vector3.Up;
 
-		if ( direction.IsNearlyZero() ) return;
+		if ( direction.IsNearlyZero() )
+			return;
 
 		var speed = _distance * FlySpeed;
-		if ( _held.Contains( "lshift" ) || _held.Contains( "rshift" ) ) speed *= FlyBoost;
+		if ( _held.Contains( "lshift" ) || _held.Contains( "rshift" ) )
+		{
+			speed *= FlyBoost;
+		}
 
 		_target += direction.Normal * speed * RealTime.Delta;
 	}
@@ -628,8 +635,14 @@ public sealed partial class PreviewPanel : Panel
 			return;
 		}
 
-		if ( e.Pressed ) _held.Add( e.Button );
-		else _held.Remove( e.Button );
+		if ( e.Pressed )
+		{
+			_held.Add( e.Button );
+		}
+		else
+		{
+			_held.Remove( e.Button );
+		}
 	}
 
 	/// <summary>Releases are only sent to the focused panel - let go of everything rather than fly on forever.</summary>
@@ -670,7 +683,8 @@ public sealed partial class PreviewPanel : Panel
 	/// </summary>
 	protected override void OnMouseDown( MousePanelEvent e )
 	{
-		if ( _dragging is not null ) return;
+		if ( _dragging is not null )
+			return;
 
 		_dragging = e.MouseButton;
 		SetMouseCapture( true );
@@ -680,7 +694,8 @@ public sealed partial class PreviewPanel : Panel
 
 	protected override void OnMouseUp( MousePanelEvent e )
 	{
-		if ( _dragging != e.MouseButton ) return;
+		if ( _dragging != e.MouseButton )
+			return;
 
 		_dragging = null;
 		SetMouseCapture( false );
@@ -705,7 +720,9 @@ public sealed partial class PreviewPanel : Panel
 
 		// The ScenePanel doesn't own the scene (we set it), so it's on us
 		if ( _previewScene.IsValid() )
+		{
 			_previewScene.Destroy();
+		}
 
 		base.OnDeleted();
 	}
