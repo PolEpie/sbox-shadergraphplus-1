@@ -35,6 +35,8 @@ public sealed partial class ShaderGraphPlusViewPanel
 
 		menu.AddOption( optionName, "swap_horiz", () =>
 		{
+			using var undoScope = UndoScope( optionName );
+
 			BaseNodePlus last = null;
 
 			foreach ( var constant in constantNodes )
@@ -187,7 +189,7 @@ public sealed partial class ShaderGraphPlusViewPanel
 		{
 			var option = menu.AddOption( classType.Type.Title, classType.Type.Icon, () =>
 			{
-				//using var undoScope = UndoScope( undoScopeName );
+				using var undoScope = UndoScope( undoScopeName );
 
 				var parameter = CreateNewParameter( classType );
 				var node = CreateNewParameterNode( parameter, position );

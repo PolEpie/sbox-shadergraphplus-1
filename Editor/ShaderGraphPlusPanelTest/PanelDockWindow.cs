@@ -81,6 +81,24 @@ public class PanelDockWindow : Panel
 	}
 
 	/// <summary>
+	/// Take a key pressed while this window, or a tool floated out of it, has focus. True when it
+	/// did something. <paramref name="scope"/> is the panel the key came through, so a text field in
+	/// it can keep its own keys.
+	/// </summary>
+	protected internal virtual bool HandleShortcut( ButtonEvent e, Panel scope ) => false;
+
+	public override void OnButtonTyped( ButtonEvent e )
+	{
+		if ( HandleShortcut( e, this ) )
+		{
+			e.StopPropagation = true;
+			return;
+		}
+
+		base.OnButtonTyped( e );
+	}
+
+	/// <summary>
 	/// A row with a shortcut shown beside it. Rows with nothing to do are just there to look at.
 	/// </summary>
 	protected static Sandbox.UI.Menu Option( Sandbox.UI.Menu menu, string text, string icon = "", string shortcut = null, Action action = null )
@@ -100,22 +118,23 @@ public class PanelDockWindow : Panel
 
 sealed class FloatingShortcuts : Panel
 {
-	readonly Panel _editorWindow;
+	readonly PanelDockWindow _editorWindow;
 
-	internal FloatingShortcuts( Panel editor )
+	internal FloatingShortcuts( PanelDockWindow editor )
 	{
 		_editorWindow = editor;
 		Style.Width = Length.Percent( 100 );
 		Style.Height = Length.Percent( 100 );
 	}
 
-	public override void OnButtonEvent( ButtonEvent e )
+	public override void OnButtonTyped( ButtonEvent e )
 	{
-		//if ( e.Pressed && editor.IsValid && editor.HandleShortcut( e ) )
-		//{
-		//	e.StopPropagation = true;
-		//	return;
-		//}
-		base.OnButtonEvent( e );
+		if ( _editorWindow.IsValid && _editorWindow.HandleShortcut( e, this ) )
+		{
+			e.StopPropagation = true;
+			return;
+		}
+
+		base.OnButtonTyped( e );
 	}
 }

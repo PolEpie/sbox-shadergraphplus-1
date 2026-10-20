@@ -138,6 +138,8 @@ public class GraphViewPanel : NodeGraphPanel
 			return;
 		}
 
+		using var undoScope = UndoScope( "Add Node" );
+
 		node.Position = ScreenToCanvas( MousePosition );
 		AddNode( node );
 

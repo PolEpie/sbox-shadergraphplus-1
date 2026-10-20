@@ -10,6 +10,20 @@ namespace ShaderGraphPlusPanelTest;
 
 public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 {
+	/// <summary>
+	/// Called before a user edit changes the graph. The window owns the undo stack, so it keeps one
+	/// step list for the graph view and the blackboard.
+	/// </summary>
+	public Action<string> OnPushUndo { get; set; }
+
+	/// <summary>
+	/// Called after the edit announced by <see cref="OnPushUndo"/>.
+	/// </summary>
+	public Action OnPushRedo { get; set; }
+
+	public override void PushUndo( string name ) => OnPushUndo?.Invoke( name );
+
+	public override void PushRedo() => OnPushRedo?.Invoke();
 
 	public new ShaderGraphPlus.ShaderGraphPlus Graph
 	{

@@ -106,6 +106,8 @@ public sealed partial class BlackboardPanel
 			if ( newName.Equals( oldName, StringComparison.OrdinalIgnoreCase ) )
 				return;
 
+			using var undoScope = UndoScope( "Rename Parameter Group" );
+
 			foreach ( var parameter in Graph.Parameters.Where( p => GroupName( p ).Equals( oldName, StringComparison.OrdinalIgnoreCase ) ) )
 			{
 				SetGroupData( oldName, newName, parameter, true );
@@ -133,6 +135,8 @@ public sealed partial class BlackboardPanel
 	{
 		if ( string.IsNullOrEmpty( group ) )
 			return;
+
+		using var undoScope = UndoScope( "Remove Parameter Group" );
 
 		foreach ( var parameter in Graph.Parameters.Where( p => GroupName( p ).Equals( group, StringComparison.OrdinalIgnoreCase ) ) )
 		{
@@ -171,6 +175,8 @@ public sealed partial class BlackboardPanel
 		if ( GroupName( parameter ).Equals( targetGroupName, StringComparison.OrdinalIgnoreCase ) )
 			return;
 
+		using var undoScope = UndoScope( "Move Parameter" );
+
 		var sourceGroupName = parameter.Group;
 		ExpandGroup( targetGroupName );
 		PruneCollapsedGroups();
@@ -191,6 +197,8 @@ public sealed partial class BlackboardPanel
 	/// </summary>
 	internal void ReorderGroup( GroupData group, int priority )
 	{
+		using var undoScope = UndoScope( "Move Parameter Group" );
+
 		Graph.ReOrderGroup( group, priority );
 
 		RebuildParameterOrder();
