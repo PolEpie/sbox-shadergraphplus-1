@@ -323,7 +323,7 @@ public sealed partial class PreviewPanel : Panel
 			_camera.BackgroundColor = BackgroundColor;
 			_camera.ZFar = 10000;
 		}
-		
+
 		_scenePanel = AddChild<ScenePanel>();
 		_scenePanel.AddClass( "scene" );
 		_scenePanel.RenderScene = _previewScene;
