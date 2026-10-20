@@ -2,7 +2,11 @@
 
 namespace ShaderGraphPlus.Nodes;
 
-public abstract class RerouteNode : BaseNodePlus, IRerouteNode
+/// <summary>
+/// A reroute for both editors: <see cref="IRerouteNode"/> is the Qt graph's, <see cref="EngineNodeGraph.IRerouteNode"/>
+/// the panel graph's, which shows it as a dot. Their members line up, so <see cref="Comment"/> serves both.
+/// </summary>
+public abstract class RerouteNode : BaseNodePlus, IRerouteNode, EngineNodeGraph.IRerouteNode
 {
 	/// <summary>
 	/// Comment to show above this node

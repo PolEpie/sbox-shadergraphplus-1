@@ -22,13 +22,16 @@ public partial class NodeGraphPanel : CanvasPanel
 	IGraph _graph;
 
 	/// <summary>
-	/// The graph shown. Setting it rebuilds the view.
+	/// The graph shown. Setting a different one rebuilds the view; call <see cref="RebuildFromGraph"/>
+	/// to refresh the same one.
 	/// </summary>
 	public IGraph Graph
 	{
 		get => _graph;
 		set
 		{
+			if ( ReferenceEquals( _graph, value ) ) return;
+
 			_graph = value;
 			RebuildFromGraph();
 		}
@@ -61,38 +64,6 @@ public partial class NodeGraphPanel : CanvasPanel
 		OnTooltip = BuildConnectionTooltip;
 	}
 
-	HashSet<NodePanel> _boxBase;
-
-	/// <summary>
-	/// A box selection began. Shift-dragging (<paramref name="additive"/>) keeps the current selection.
-	/// Overrides should call the base, which the rest of the gesture relies on.
-	/// </summary>
-	protected virtual void OnBoxSelectionStarted( bool additive )
-	{
-		_boxBase = additive ? SelectedNodes.ToHashSet() : [];
-		if ( !additive ) DeselectConnections();
-	}
-
-	/// <summary>
-	/// A box selection ended or was <paramref name="cancelled"/>. Overrides should call the base.
-	/// </summary>
-	protected virtual void OnBoxSelectionFinished( bool cancelled ) => _boxBase = null;
-
-	/// <summary>
-	/// Layout pixels per canvas unit; 1 at the default zoom.
-	/// </summary>
-	public float Zoom => (CanvasToScreen( Vector2.One ) - CanvasToScreen( Vector2.Zero )).x / ScaleToScreen;
-
-	/// <summary>
-	/// The furthest the wheel zooms out, as a <see cref="Zoom"/>.
-	/// </summary>
-	public float MinZoom { get; set; } = 0.1f;
-
-	/// <summary>
-	/// The furthest the wheel zooms in, as a <see cref="Zoom"/>.
-	/// </summary>
-	public float MaxZoom { get; set; } = 5f;
-
 	/// <summary>
 	/// Outline and glow of selected nodes and comments, and the colour of selected wires.
 	/// </summary>
@@ -113,15 +84,6 @@ public partial class NodeGraphPanel : CanvasPanel
 	/// both read at once.
 	/// </summary>
 	public Color HighlightColor { get; set; } = Color.Parse( "#F5B942" ).Value;
-
-	/// <summary>
-	/// Centre the view on <paramref name="center"/> at <paramref name="zoom"/>.
-	/// </summary>
-	public void SetView( Vector2 center, float zoom )
-	{
-		var half = Viewport.Size / ScaleToScreen / zoom * 0.5f;
-		SetView( center - half, center + half );
-	}
 
 	public NodeHandleConfig DefaultHandleConfig { get; } = new( null, Color.Parse( "#999" ).Value );
 
@@ -145,11 +107,15 @@ public partial class NodeGraphPanel : CanvasPanel
 	}
 
 	/// <summary>
-	/// The panel for <paramref name="node"/>: a <see cref="CommentPanel"/> for comments.
+	/// The panel for <paramref name="node"/>: a <see cref="ReroutePanel"/> for reroutes, a
+	/// <see cref="CommentPanel"/> for comments.
 	/// </summary>
-	protected virtual NodePanel CreateNodePanel( INode node, bool isPreview = false ) => node is ICommentNode
-		? new CommentPanel( this, node, isPreview )
-		: new NodePanel( this, node, isPreview );
+	protected virtual NodePanel CreateNodePanel( INode node, bool isPreview = false ) => node switch
+	{
+		IRerouteNode => new ReroutePanel( this, node, isPreview ),
+		ICommentNode => new CommentPanel( this, node, isPreview ),
+		_ => new NodePanel( this, node, isPreview ),
+	};
 
 	/// <summary>
 	/// A see-through panel for <paramref name="node"/> that isn't in the graph, such as a drop preview.
@@ -169,204 +135,45 @@ public partial class NodeGraphPanel : CanvasPanel
 	}
 
 	/// <summary>
-	/// Add <paramref name="node"/> to the graph and show it.
+	/// The plug whose row contains <paramref name="position"/>, in canvas units. Comments are skipped:
+	/// they have no plugs and sit behind what they hold, so they mustn't hide their members' plugs.
 	/// </summary>
-	public NodePanel AddNode( INode node )
+	protected PlugPanel GetPlugAt( Vector2 position )
 	{
-		ArgumentNullException.ThrowIfNull( node );
+		for ( var i = _nodes.Count - 1; i >= 0; i-- )
+		{
+			var node = _nodes[i];
+			if ( node is CommentPanel || !new Rect( node.Position, node.Size ).IsInside( position ) ) continue;
 
-		node.Position = node.Position.SnapToGrid( GridSize );
-		Graph.AddNode( node );
+			return node.GetPlugAt( position );
+		}
 
-		return ShowNode( node );
-	}
-
-	NodePanel ShowNode( INode node )
-	{
-		var panel = Content.AddChild( CreateNodePanel( node ) );
-		_nodes.Add( panel );
-		return panel;
+		return null;
 	}
 
 	/// <summary>
-	/// Remove a node, and its wires, from the graph.
+	/// The node at <paramref name="position"/>, in canvas units: the one owning the plug there,
+	/// else the topmost node, else the innermost comment.
 	/// </summary>
-	public void RemoveNode( NodePanel node )
+	protected NodePanel GetNodeAt( Vector2 position )
 	{
-		if ( node is null || !_nodes.Remove( node ) ) return;
+		if ( GetPlugAt( position ) is { } plug ) return plug.Node;
 
-		OnNodeRemoving( node );
-		Graph?.RemoveNode( node.Node );
-		node.Delete( true );
+		NodePanel comment = null;
 
-		if ( node.Selected ) SelectionChanged?.Invoke();
-	}
-
-	partial void OnNodeRemoving( NodePanel node );
-
-	/// <summary>
-	/// Rebuild every node panel and wire from <see cref="Graph"/>.
-	/// </summary>
-	public virtual void RebuildFromGraph()
-	{
-		var hadSelection = _nodes.Any( x => x.Selected );
-
-		foreach ( var node in _nodes )
+		for ( var i = _nodes.Count - 1; i >= 0; i-- )
 		{
-			node.Delete( true );
+			var node = _nodes[i];
+			if ( !new Rect( node.Position, node.Size ).IsInside( position ) ) continue;
+
+			if ( node is not CommentPanel ) return node;
+			comment ??= node;
 		}
 
-		_nodes.Clear();
-
-		foreach ( var node in Graph?.Nodes ?? [] )
-		{
-			ShowNode( node );
-		}
-
-		OnRebuilt();
-
-		if ( hadSelection ) SelectionChanged?.Invoke();
+		return comment;
 	}
 
-	partial void OnRebuilt();
-
-	/// <summary>
-	/// Select <paramref name="node"/> for a press: Ctrl toggles it, Shift adds it, otherwise it
-	/// becomes the only selection unless it's already selected.
-	/// </summary>
-	public void PressNode( NodePanel node, bool ctrl, bool shift )
-	{
-		if ( ctrl )
-		{
-			node.Selected = !node.Selected;
-		}
-		else if ( shift )
-		{
-			node.Selected = true;
-		}
-		else if ( !node.Selected )
-		{
-			DeselectConnections();
-			foreach ( var other in _nodes ) other.Selected = other == node;
-		}
-		else
-		{
-			return;
-		}
-
-		SelectionChanged?.Invoke();
-	}
-
-	public void SelectNode( NodePanel node )
-	{
-		DeselectConnections();
-		foreach ( var other in _nodes ) other.Selected = other == node;
-		SelectionChanged?.Invoke();
-	}
-
-	/// <summary>
-	/// Make the panel showing <paramref name="node"/> the only selection. Does nothing if it isn't shown.
-	/// </summary>
-	public void SelectNode( INode node )
-	{
-		if ( node is not null && FindNode( node ) is { } panel )
-			SelectNode( panel );
-	}
-
-	public void SelectAll()
-	{
-		foreach ( var node in _nodes ) node.Selected = true;
-		SelectionChanged?.Invoke();
-	}
-
-	/// <summary>
-	/// Deselect every node and wire.
-	/// </summary>
-	public void ClearSelection()
-	{
-		if ( DeselectNodes() | DeselectConnections() ) SelectionChanged?.Invoke();
-	}
-
-	/// <summary>
-	/// Deselect every node without raising <see cref="SelectionChanged"/>; true if any was selected.
-	/// </summary>
-	bool DeselectNodes()
-	{
-		var any = false;
-
-		foreach ( var node in _nodes )
-		{
-			any |= node.Selected;
-			node.Selected = false;
-		}
-
-		return any;
-	}
-
-	/// <summary>
-	/// Remove the selected wires, and every selected node that can be removed.
-	/// </summary>
-	public void DeleteSelection()
-	{
-		OnDeleteSelection();
-
-		foreach ( var node in SelectedNodes.Where( x => x.Node.CanRemove ).ToArray() )
-		{
-			RemoveNode( node );
-		}
-	}
-
-	partial void OnDeleteSelection();
-
-	/// <summary>
-	/// The box moved, in canvas units. Any overlap selects a node. A comment needs the whole of it
-	/// inside the box, so selecting nodes in a comment doesn't drag the comment and everything in it along.
-	/// </summary>
-	protected virtual void OnBoxSelectionChanged( Rect box )
-	{
-		foreach ( var node in _nodes )
-		{
-			var rect = new Rect( node.Position, node.Size );
-			var inBox = node is CommentPanel ? box.IsInside( rect, true ) : rect.Overlaps( box );
-			node.Selected = _boxBase.Contains( node ) || inBox;
-		}
-
-		SelectionChanged?.Invoke();
-	}
-
-	public override void OnButtonTyped( ButtonEvent e )
-	{
-		if ( e.Button == "delete" && !IsBoxSelecting )
-		{
-			DeleteSelection();
-			e.StopPropagation = true;
-			return;
-		}
-
-		// Ctrl+C, X and V come as copy, cut and paste events; D is ours, unless a text field wants it
-		if ( e.HasCtrl && e.Button == "d" && !IsBoxSelecting && !Descendants.OfType<TextEntry>().Any( x => x.HasFocus ) )
-		{
-			DuplicateSelection();
-			e.StopPropagation = true;
-			return;
-		}
-
-		base.OnButtonTyped( e );
-	}
-
-	public override void OnMouseWheel( Vector2 value )
-	{
-		var delta = value.y != 0 ? value.y : value.x;
-		if ( delta == 0 || !CanNavigate || IsPanning || IsBoxSelecting || !Viewport.IsInside( MousePosition ) ) return;
-
-		// ZoomAt scales the visible span, so the zoom changes by its inverse. Stop on the limit
-		// rather than short of it.
-		var zoom = Zoom;
-		var target = (zoom * (delta < 0 ? 1.1f : 0.9f)).Clamp( MinZoom, MaxZoom );
-		if ( target.AlmostEqual( zoom ) ) return;
-
-		ZoomAt( MousePosition, zoom / target );
-	}
+	Vector2 MouseCanvas => ScreenToCanvas( MousePosition );
 
 	public override void Tick()
 	{
@@ -374,6 +181,18 @@ public partial class NodeGraphPanel : CanvasPanel
 		{
 			_viewInitialized = true;
 			SetView( Vector2.Zero, 1f );
+			RestoreViewFromCookie();
+		}
+
+		if ( _viewInitialized )
+		{
+			AutoPan();
+			SaveViewCookie();
+		}
+
+		if ( _nodePreview.IsValid() && _previewFollowsMouse )
+		{
+			_nodePreview.MoveTo( MouseCanvas.SnapToGrid( GridSize ) );
 		}
 
 		base.Tick();

@@ -20,6 +20,8 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	private Sandbox.UI.Menu _recentFilesMenu;
 	private readonly List<string> _recentFiles = new();
 
+	private readonly UndoStack _undoStack = new();
+
 	private ShaderGraphPlusViewPanel _graphView;
 	private PropertiesPanel _properties;
 	private PalettePanel _palette;
@@ -187,6 +189,8 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		_blackboard = new BlackboardPanel( IsSubgraph );
 		_blackboard.Graph = _graph;
 		_blackboard.OnDirty += ( evaluate ) => SetDirty( evaluate );
+		_blackboard.OnPushUndo = PushUndo;
+		_blackboard.OnPushRedo = PushRedo;
 		_blackboard.OnParameterNodesDeleted += () =>
 		{
 			_graphView.RebuildFromGraph();
@@ -194,6 +198,8 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		_graphView = new ShaderGraphPlusViewPanel( _blackboard );
 		_graphView.Graph = _graph;
+		_graphView.OnPushUndo = PushUndo;
+		_graphView.OnPushRedo = PushRedo;
 		_graphView.SelectionChanged += () =>
 		{
 			// Nothing, or several, selected shows the graph, like the Qt editor
@@ -341,14 +347,14 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		_graphView.Graph = _graph;
 		_blackboard.Graph = _graph;
+		UpdateOutputPlugTypes();
 
 		UpdateTitle();
 
 		// TODO
 		//_preview.Model = null;
 		//_preview.Tint = Color.White;
-		//_undoStack.Clear();
-		//_undoHistory.History = _undoStack.Names;
+		_undoStack.Clear();
 		_generatedCode = "";
 		//_generatedCodeTextView.Value = "";
 		//Selection.Set( _graph );
@@ -435,12 +441,12 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		_graphView.Graph = _graph;
 		_blackboard.Graph = _graph;
+		UpdateOutputPlugTypes();
 
 		UpdateTitle();
 
 		// TODO
-		//_undoStack.Clear();
-		//_undoHistory.History = _undoStack.Names;
+		_undoStack.Clear();
 		_generatedCode = "";
 		//_generatedCodeTextView.Value = "";
 		//Selection.Set( _graph );
@@ -470,14 +476,77 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 		Window?.Dispose();
 	}
 
+	private void PushUndo( string name )
+	{
+		SGPLogger.Info( $"Push Undo ({name})" );
+		_undoStack.PushUndo( name, _graph.UndoStackSerialize() );
+	}
+
+	private void PushRedo()
+	{
+		SGPLogger.Info( "Push Redo" );
+		_undoStack.PushRedo( _graph.UndoStackSerialize() );
+		SetDirty();
+	}
+
 	private void Undo()
 	{
-		SGPLogger.Info( $"TODO : Undo" );
+		if ( _undoStack.Undo() is not UndoOp op ) return;
+
+		SGPLogger.Info( $"Undo ({op.name})" );
+		RestoreGraph( op.undoBuffer );
 	}
 
 	private void Redo()
 	{
-		SGPLogger.Info( $"TODO : Redo" );
+		if ( _undoStack.Redo() is not UndoOp op ) return;
+
+		SGPLogger.Info( $"Redo ({op.name})" );
+		RestoreGraph( op.redoBuffer );
+	}
+
+	/// <summary>
+	/// Put the graph back to a snapshot from <see cref="ShaderGraphPlus.ShaderGraphPlus.UndoStackSerialize"/>,
+	/// like the Qt editor's undo. Nodes and parameters are new objects afterwards, so both views rebuild
+	/// and the properties stop showing what was replaced.
+	/// </summary>
+	private void RestoreGraph( string buffer )
+	{
+		_graph.ClearNodes();
+		_graph.ClearGroupData();
+		_graph.ClearParameters();
+
+		_graph.DeserializeNodes( buffer, true );
+		_graph.DeserializeGroupData( buffer );
+		_graph.DeserializeParameters( buffer );
+
+		_graphView.RebuildFromGraph();
+		_blackboard.RebuildFromGraph();
+		_properties.Target = _graph;
+
+		SetDirty();
+	}
+
+	/// <summary>
+	/// Ctrl+Z undoes, Ctrl+Y and Ctrl+Shift+Z redo - unless a text field has the keys, which undoes its own typing.
+	/// </summary>
+	protected internal override bool HandleShortcut( ButtonEvent e, Panel scope )
+	{
+		if ( !e.HasCtrl || scope.Descendants.OfType<Sandbox.UI.TextEntry>().Any( x => x.HasFocus ) )
+			return false;
+
+		switch ( e.Button )
+		{
+			case "z" when e.HasShift:
+			case "y":
+				Redo();
+				return true;
+			case "z":
+				Undo();
+				return true;
+		}
+
+		return false;
 	}
 
 	private void CutSelection()
@@ -509,7 +578,95 @@ public sealed class ShaderGraphPlusPanelTest : PanelDockWindow
 	{
 		SGPLogger.Info( $"TODO : GeneratePreviewCode" );
 
+		UpdateOutputPlugTypes();
+
 		return "";
+	}
+
+	/// <summary>
+	/// Give each output plug the type the compiler works out for it, like the Qt editor does while
+	/// generating preview code. Outputs are declared as <see cref="NodeResult.Func"/>, which has no
+	/// colour of its own - reroutes and generic nodes would stay grey, and so would their wires.
+	/// </summary>
+	private void UpdateOutputPlugTypes()
+	{
+		if ( _graph is null || !_graphView.IsValid() ) return;
+
+		var features = new Dictionary<string, ShaderFeatureBase>();
+		foreach ( var feature in _graph.Parameters.OfType<IBlackboardShaderFeatureParameter>() )
+		{
+			ShaderFeatureBase shaderFeature = feature switch
+			{
+				ShaderFeatureBooleanParameter b => new ShaderFeatureBoolean { Name = b.Name, HeaderName = b.HeaderName, Description = b.Description },
+				ShaderFeatureEnumParameter e => new ShaderFeatureEnum { Name = e.Name, HeaderName = e.HeaderName, Description = e.Description, Options = e.Options },
+				_ => null
+			};
+
+			if ( shaderFeature is { IsValid: true } ) features.TryAdd( shaderFeature.Name, shaderFeature );
+		}
+
+		var compiler = new GraphCompiler( _graph, null, features, true );
+
+		foreach ( var node in _graph.Nodes.OfType<BaseNodePlus>() )
+		{
+			if ( _graphView.FindNode( node ) is not { } panel ) continue;
+
+			foreach ( var plug in panel.Outputs )
+			{
+				if ( plug.Inner is not BasePlug { Info.Property: { } property } || property.PropertyType != typeof( NodeResult.Func ) ) continue;
+				if ( property.GetCustomAttribute<BaseNodePlus.OutputAttribute>() is null ) continue;
+
+				NodeResult result;
+				try
+				{
+					result = compiler.Result( new NodeInput { Identifier = node.Identifier, Output = property.Name } );
+				}
+				catch ( Exception )
+				{
+					// A node that can't compile yet keeps its declared type
+					continue;
+				}
+
+				if ( ComponentType( result ) is { } type ) plug.PropertyType = type;
+			}
+		}
+	}
+
+	/// <summary>
+	/// The value type a compiled result stands for, or null when it isn't one a plug shows.
+	/// </summary>
+	private static Type ComponentType( NodeResult result )
+	{
+		if ( !result.IsValid() ) return null;
+
+		if ( result.ResultType == ResultType.VoidFunction )
+		{
+			return result.Components switch
+			{
+				1 => typeof( float ),
+				2 => typeof( Vector2 ),
+				3 => typeof( Vector3 ),
+				4 => typeof( Vector4 ),
+				_ => null,
+			};
+		}
+
+		return result.ResultType switch
+		{
+			ResultType.Bool => typeof( bool ),
+			ResultType.Int => typeof( int ),
+			ResultType.Float => typeof( float ),
+			ResultType.Vector2 => typeof( Vector2 ),
+			ResultType.Vector3 => typeof( Vector3 ),
+			ResultType.Vector4 => typeof( Vector4 ),
+			ResultType.Float2x2 => typeof( Float2x2 ),
+			ResultType.Float3x3 => typeof( Float3x3 ),
+			ResultType.Float4x4 => typeof( Float4x4 ),
+			ResultType.Sampler => typeof( Sampler ),
+			ResultType.Texture2D or ResultType.TextureCube => typeof( Texture ),
+			ResultType.Gradient => typeof( Gradient ),
+			_ => null,
+		};
 	}
 
 	private void SetDirty( bool evaluate = true )

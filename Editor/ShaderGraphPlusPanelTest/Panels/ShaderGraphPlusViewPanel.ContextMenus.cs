@@ -10,15 +10,36 @@ namespace ShaderGraphPlusPanelTest;
 
 public sealed partial class ShaderGraphPlusViewPanel
 {
-	protected override void BuildContextMenu( Sandbox.UI.Menu menu, EngineNodeGraph.NodePanel node, Vector2 position )
+	/// <summary>
+	/// Offers to convert the selected constants to parameters, like the Qt view's. Not for a wire
+	/// dropped from a plug, whose menu is about what that wire can take.
+	/// </summary>
+	protected override void OnOpenContextMenu( Sandbox.UI.Menu menu, PlugPanel targetPlug )
 	{
-		base.BuildContextMenu( menu, node, position );
+		base.OnOpenContextMenu( menu, targetPlug );
 
-		void ConvertConstants( IReadOnlyList<IConstantNode> constants )
+		if ( _blackboard is null || Graph is null || targetPlug.IsValid() )
+			return;
+
+		var selectedNodes = SelectedNodes.Select( x => x.Node ).ToArray();
+
+		if ( selectedNodes.Length == 0 || !selectedNodes.All( x => x is IConstantNode && x is not IConstantMatrixNode ) )
+			return;
+
+		var constantNodes = selectedNodes.OfType<IConstantNode>().ToArray();
+		var parameterType = Graph.IsSubgraph ? "Subgraph Input" : "Material Parameter";
+		var optionName = constantNodes.Length == 1 ? $"Convert Constant to {parameterType}" : $"Convert {constantNodes.Length} Constants to {parameterType}s";
+
+		if ( menu.HasOptions )
+			menu.AddSeparator();
+
+		menu.AddOption( optionName, "swap_horiz", () =>
 		{
+			using var undoScope = UndoScope( optionName );
+
 			BaseNodePlus last = null;
 
-			foreach ( var constant in constants )
+			foreach ( var constant in constantNodes )
 			{
 				last = ConvertConstantToParameter( constant );
 			}
@@ -27,69 +48,35 @@ public sealed partial class ShaderGraphPlusViewPanel
 			_blackboard.RebuildFromGraph();
 
 			SelectNode( last );
-		}
+		} );
+	}
+
+	/// <summary>
+	/// Same entries as the Qt view's after the engine's: on empty space the parameters to create and
+	/// the named reroutes to place; for a wire dropped from a plug, the named reroute that fits it.
+	/// </summary>
+	protected override void OnPopulateNodeMenuSpecialOptions( Sandbox.UI.Menu menu, Vector2 position, PlugPanel targetPlug, string filter )
+	{
+		base.OnPopulateNodeMenuSpecialOptions( menu, position, targetPlug, filter );
 
 		if ( _blackboard is null || Graph is null )
 			return;
 
-		var selectedNodes = SelectedNodes.Select( x => x.Node ).ToArray();
-		var isSubgraph = Graph.IsSubgraph;
-
-		if ( selectedNodes.Length >= 1 )
+		if ( !targetPlug.IsValid() )
 		{
-			if ( selectedNodes.All( x => x is IConstantNode && x is not IConstantMatrixNode ) )
-			{
-				var constantNodes = selectedNodes.OfType<IConstantNode>().Where( x => x is not IConstantMatrixNode ).ToArray();
-
-				if ( constantNodes.Length == 0 || constantNodes.Length != selectedNodes.Length )
-					return;
-
-				var parameterType = Graph.IsSubgraph ? "Subgraph Input" : "Material Parameter";
-				var optionType = constantNodes.Length == 1 ? $"Convert Constant to {parameterType}" : $"Convert {constantNodes.Length} Constants to {parameterType}s";
-
-				if ( menu.HasOptions )
-					menu.AddSeparator();
-
-				menu.AddOption( optionType, "swap_horiz", () => ConvertConstants( constantNodes ) );
-			}
+			CreateParameterOptions( menu, position, Graph.IsSubgraph );
+			CreateNamedRerouteOptions( menu, position, null );
 		}
-		else
+		else if ( targetPlug is PlugInPanel plugIn )
 		{
-			CreateParameterOptions( menu, position, isSubgraph );
-
-			if ( menu.HasOptions )
-				menu.AddSeparator();
-
-			CreateNodeOptions( menu, position, null );
+			CreateNamedRerouteOptions( menu, position, plugIn );
 		}
-	}
-
-	/// <summary>
-	/// A wire dropped on nothing offers the nodes that can take it, wired up once created.
-	/// </summary>
-	private void BuildConnectionDropContextMenu( PlugPanel plug, Vector2 position )
-	{
-		if ( Graph is null ) return;
-
-		OpenMenu( menu =>
+		else if ( targetPlug is PlugOutPanel plugOut )
 		{
-			if ( RerouteNodeType is not null )
-			{
-				menu.AddOption( "Add Reroute", "route", () => CreateNewNode( RerouteNodeType, position, plug ) );
-				menu.AddSeparator();
-			}
+			CreateNamedRerouteDeclarationOption( menu, position, plugOut );
+		}
 
-			if ( plug is PlugOutPanel plugOut )
-			{
-				CreateNamedRerouteDeclarationOption( menu, position, plugOut );
-			}
-			else if ( plug is PlugInPanel plugIn )
-			{
-				CreateNamedRerouteOptions( menu, position, plugIn );
-			}
-
-			CreateNodeOptions( menu, position, plug );
-		} );
+		menu.AddSeparator();
 	}
 
 	private void CreateNamedRerouteDeclarationOption( Menu menu, Vector2 position, PlugOutPanel plugOut )
@@ -105,14 +92,17 @@ public sealed partial class ShaderGraphPlusViewPanel
 				else
 				{
 					var nodeType = new NamedRerouteDeclarationNodeType( EditorTypeLibrary.GetType<NamedRerouteDeclarationNode>(), namedRerouteName );
-					CreateNewNode( nodeType, position, plugOut );
+					CreateNewNode( new PanelNodeType( nodeType ), position, plugOut );
 				}
 			},
 			"Specify a Named Reroute name" );
 		} );
 	}
 
-	private void CreateNamedRerouteOptions( Menu menu, Vector2 position, PlugInPanel plugIn )
+	/// <summary>
+	/// The named reroutes to place: wired to <paramref name="plug"/>, or on their own when it's null.
+	/// </summary>
+	private void CreateNamedRerouteOptions( Menu menu, Vector2 position, PlugPanel plug )
 	{
 		var namedRerouteDeclarations = Graph.Nodes.OfType<NamedRerouteDeclarationNode>();
 
@@ -126,7 +116,7 @@ public sealed partial class ShaderGraphPlusViewPanel
 				{
 					var nodeType = new NamedRerouteNodeType( EditorTypeLibrary.GetType<NamedRerouteNode>(), namedRerouteDeclaration.Name );
 
-					CreateNewNode( nodeType, position, plugIn );
+					CreateNewNode( new PanelNodeType( nodeType ), position, plug );
 				} );
 			}
 		}
@@ -199,7 +189,7 @@ public sealed partial class ShaderGraphPlusViewPanel
 		{
 			var option = menu.AddOption( classType.Type.Title, classType.Type.Icon, () =>
 			{
-				//using var undoScope = UndoScope( undoScopeName );
+				using var undoScope = UndoScope( undoScopeName );
 
 				var parameter = CreateNewParameter( classType );
 				var node = CreateNewParameterNode( parameter, position );
@@ -259,72 +249,5 @@ public sealed partial class ShaderGraphPlusViewPanel
 				NewParameterMenuOption( newSubgraphOutputParameterMenu, classType, "Add Subgraph Output Parameter" );
 			}
 		}
-	}
-
-	/// <summary>
-	/// A filter box, then the nodes <see cref="GetRelevantNodes"/> offers for <paramref name="plug"/>:
-	/// in their categories, or the best matches flat while filtering.
-	/// </summary>
-	void CreateNodeOptions( Sandbox.UI.Menu menu, Vector2 position, PlugPanel plug )
-	{
-		menu = menu.AddMenu( "Create Node", "add" );
-
-		var results = new List<Panel>();
-		var filter = menu.AddWidget( new TextEntry { Placeholder = "Filter Nodes.." } );
-
-		void Fill( string text )
-		{
-			foreach ( var row in results )
-			{
-				menu.Remove( row );
-				row.Delete( true );
-			}
-
-			results.Clear();
-
-			var query = new NodeQuery( Graph, plug?.Inner as IPlug, text );
-			var types = GetRelevantNodes( query ).ToArray();
-
-			if ( query.Filter.Count > 0 )
-			{
-				foreach ( var type in types.OrderByDescending( x => x.GetScore( query ) ?? 0 ).Take( MaxFilteredResults ) )
-				{
-					var name = string.Join( " → ", type.Path.Where( x => !x.IsHeading ).Select( x => x.Name ) );
-					results.Add( menu.AddOption( name, type.Path[^1].Icon, () => CreateNewNode( type, position, plug ) ) );
-				}
-
-				if ( types.Length > MaxFilteredResults )
-				{
-					results.Add( menu.AddWidget( new Label( $"... and {types.Length - MaxFilteredResults} more" ) ) );
-				}
-
-				return;
-			}
-
-			foreach ( var type in types.OrderBy( x => string.Join( "/", x.Path.Select( p => p.Name ) ), StringComparer.OrdinalIgnoreCase ) )
-			{
-				var parent = menu;
-
-				foreach ( var part in type.Path[..^1] )
-				{
-					if ( part.IsHeading ) continue;
-
-					if ( parent.FindOption( part.Name ) is not { } submenu )
-					{
-						submenu = parent.AddMenu( part.Name, part.Icon );
-						if ( parent == menu ) results.Add( submenu );
-					}
-
-					parent = submenu;
-				}
-
-				var option = parent.AddOption( type.Path[^1].Name, type.Path[^1].Icon, () => CreateNewNode( type, position, plug ) );
-				if ( parent == menu ) results.Add( option );
-			}
-		}
-
-		filter.OnTextEdited = Fill;
-		menu.AboutToShow += _ => filter.Focus();
-		Fill( null );
 	}
 }

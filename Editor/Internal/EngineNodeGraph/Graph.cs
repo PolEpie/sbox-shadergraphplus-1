@@ -77,6 +77,34 @@ public interface INode
 	/// Draw over the node after its body and title. <paramref name="rect"/> is the whole node, in node units.
 	/// </summary>
 	void OnPaint<T>( T paint, Rect rect ) where T : INodePaint, allows ref struct { }
+
+	/// <summary>
+	/// Double-clicked. Call <see cref="PanelEvent.StopPropagation"/> on <paramref name="e"/> to take
+	/// it, else the graph's default runs.
+	/// </summary>
+	void OnDoubleClick( NodePanel panel, MousePanelEvent e ) { }
+
+	/// <summary>
+	/// Extra right-click entries, shown as a submenu of the graph's menu: set its
+	/// <see cref="Menu.Text"/>. Null for none.
+	/// </summary>
+	Menu CreateContextMenu( NodePanel panel ) => null;
+
+	/// <summary>
+	/// Shown as "Go to Definition" in the right-click menu when not null.
+	/// </summary>
+	Action GoToDefinition => null;
+}
+
+/// <summary>
+/// A reroute: a dot with one input and one output that bends a wire.
+/// </summary>
+public interface IRerouteNode : INode
+{
+	/// <summary>
+	/// Shown in a bubble above the dot when not blank.
+	/// </summary>
+	string Comment { get; set; }
 }
 
 /// <summary>
@@ -86,9 +114,9 @@ public interface INode
 /// </summary>
 public interface ICommentNode : INode
 {
-	string Title { get; }
+	string Title { get; set; }
 	string Description => null;
-	Color Color { get; }
+	Color Color { get; set; }
 
 	/// <summary>
 	/// In points, like the editor's comments.
@@ -120,6 +148,17 @@ public interface IPlug
 	/// The inline editor for this plug's value, or null for none.
 	/// </summary>
 	NodeValueEditor CreateEditor( PlugPanel plug ) => null;
+
+	/// <summary>
+	/// Right-click menu for this plug, or null to leave the click to the node.
+	/// </summary>
+	Menu CreateContextMenu( PlugPanel plug ) => null;
+
+	/// <summary>
+	/// Double-clicked. Call <see cref="PanelEvent.StopPropagation"/> on <paramref name="e"/> to take
+	/// it, else the node gets it.
+	/// </summary>
+	void OnDoubleClick( PlugPanel plug, MousePanelEvent e ) { }
 
 	bool ShowLabel { get; }
 	bool AllowStretch { get; }

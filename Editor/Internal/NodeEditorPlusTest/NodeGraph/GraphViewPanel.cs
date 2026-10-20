@@ -26,20 +26,9 @@ public class GraphViewPanel : NodeGraphPanel
 	private bool _hasDropped;
 	private NodePanel _dropPreview;
 
-	/// <summary>
-	/// The comment node to create from the right-click menu. Null for a graph without comments.
-	/// </summary>
-	protected virtual INodeType CommentNodeType { get; }
-	protected virtual INodeType RerouteNodeType { get; }
-
 	public GraphViewPanel() : base()
 	{
 
-	}
-
-	protected virtual IEnumerable<INodeType> GetRelevantNodes( NodeQuery query )
-	{
-		return Enumerable.Empty<INodeType>();
 	}
 
 	/// <summary>
@@ -47,45 +36,6 @@ public class GraphViewPanel : NodeGraphPanel
 	/// </summary>
 	protected override string ReadClipboard() => Editor.EditorUtility.Clipboard.Paste();
 
-
-	public NodePanel CreateNewNode( INodeType type, Vector2 position )
-	{
-		if ( type is null || Graph is null )
-			return null;
-
-		var node = type.CreateNode( Graph );
-
-		if ( node is null )
-			return null;
-
-		node.Position = position;
-
-		return AddNode( (INode)node );
-	}
-
-	/// <summary>
-	/// Add a node of <paramref name="type"/> at <paramref name="position"/> and select it. With
-	/// <paramref name="plug"/>, wire the new node's matching plug to it, like the Qt editor.
-	/// </summary>
-	public NodePanel CreateNewNode( INodeType type, Vector2 position, PlugPanel plug )
-	{
-		if ( CreateNewNode( type, position ) is not { } panel ) return null;
-
-		SelectNode( panel );
-
-		switch ( plug )
-		{
-			case PlugInPanel input when type.TryGetOutput( input.Inner.Type, out var name ) && panel.Outputs.FirstOrDefault( x => x.Inner.Identifier == name ) is { } output:
-				Connect( output, input );
-				break;
-
-			case PlugOutPanel output when type.TryGetInput( output.Inner.Type, out var name ) && panel.Inputs.FirstOrDefault( x => x.Inner.Identifier == name ) is { } input:
-				Connect( output, input );
-				break;
-		}
-
-		return panel;
-	}
 
 	public override void Tick()
 	{
@@ -103,7 +53,7 @@ public class GraphViewPanel : NodeGraphPanel
 		}
 	}
 
-	protected virtual INodeType NodeTypeFromPanelEvent( PanelEvent ev )
+	protected virtual EngineNodeGraph.INodeType NodeTypeFromPanelEvent( PanelEvent ev )
 	{
 		return null;
 	}
@@ -119,7 +69,7 @@ public class GraphViewPanel : NodeGraphPanel
 	/// </summary>
 	protected virtual INode CreateDroppedNode( PanelEvent e )
 	{
-		return Graph is not null && NodeTypeFromPanelEvent( e ) is { } type ? type.CreateNode( Graph ) as INode : null;
+		return Graph is not null && NodeTypeFromPanelEvent( e ) is { } type ? type.CreateNode( base.Graph ) : null;
 	}
 
 	protected override void OnDragEnter( PanelEvent e )
@@ -187,6 +137,8 @@ public class GraphViewPanel : NodeGraphPanel
 		{
 			return;
 		}
+
+		using var undoScope = UndoScope( "Add Node" );
 
 		node.Position = ScreenToCanvas( MousePosition );
 		AddNode( node );

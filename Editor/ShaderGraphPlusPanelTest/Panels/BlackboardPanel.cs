@@ -51,6 +51,31 @@ public sealed partial class BlackboardPanel : Panel
 
 	public Action OnParameterNodesDeleted { get; set; }
 
+	/// <summary>
+	/// Called before a user edit changes the graph, and after it. The window owns the undo stack, so
+	/// it keeps one step list for the graph view and the blackboard.
+	/// </summary>
+	public Action<string> OnPushUndo { get; set; }
+
+	public Action OnPushRedo { get; set; }
+
+	int _undoDepth;
+
+	/// <summary>
+	/// <see cref="OnPushUndo"/> now and <see cref="OnPushRedo"/> on dispose. Inside another scope it
+	/// does neither, so one user edit is one undo step.
+	/// </summary>
+	internal IDisposable UndoScope( string name )
+	{
+		if ( _undoDepth++ == 0 ) OnPushUndo?.Invoke( name );
+		return new Sandbox.Utility.DisposeAction( EndUndoScope );
+	}
+
+	void EndUndoScope()
+	{
+		if ( --_undoDepth == 0 ) OnPushRedo?.Invoke();
+	}
+
 	public ShaderGraphPlus.ShaderGraphPlus Graph
 	{
 		get => field;
@@ -124,6 +149,8 @@ public sealed partial class BlackboardPanel : Panel
 
 	private void CreateNewParameter( IBlackboardParameterType type, string group = "" )
 	{
+		using var undoScope = UndoScope( "Add Parameter" );
+
 		group = NormalizeGroup( group );
 
 		_searchFilter.SetValue( "" );
@@ -366,6 +393,8 @@ public sealed partial class BlackboardPanel : Panel
 
 		void Delete()
 		{
+			using var undoScope = UndoScope( "Remove Parameter" );
+
 			foreach ( var node in parameterNodes )
 			{
 				Graph.RemoveNode( node );
@@ -485,6 +514,8 @@ public sealed partial class BlackboardPanel : Panel
 		if ( Graph.Parameters.Any( p => p != parameter && p.Name.Equals( name, StringComparison.OrdinalIgnoreCase ) ) )
 			return;
 
+		using var undoScope = UndoScope( "Rename Parameter" );
+
 		parameter.Name = name;
 
 		OnDirty?.Invoke( true );
@@ -510,6 +541,8 @@ public sealed partial class BlackboardPanel : Panel
 
 		if ( !Graph.TryFindGroupData( sourceGroupName, out var sourceGroupData ) )
 			return;
+
+		using var undoScope = UndoScope( "Move Parameter" );
 
 		if ( !sourceGroupName.Equals( targetGroupName, StringComparison.OrdinalIgnoreCase ) && Graph.TryFindGroupData( targetGroupName, out var targetGroupData ) )
 		{
