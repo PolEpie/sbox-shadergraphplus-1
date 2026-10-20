@@ -18,8 +18,9 @@ public sealed class GeneratedCodePanel : Panel
 		}
 		set
 		{
-			if ( _scriptControl == null || string.IsNullOrWhiteSpace( value ) )
+			if ( _scriptControl == null )
 				return;
+		
 
 			_scriptControl.Source = value;
 		}
