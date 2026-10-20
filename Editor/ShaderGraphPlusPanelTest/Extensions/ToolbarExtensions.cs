@@ -4,14 +4,14 @@ namespace ShaderGraphPlusPanelTest;
 
 public static class ToolbarExtensions
 {
-	public static TextureButton AddButton( this Toolbar toolbar, string text, Texture texture, Action action )
+	public static TextureIconButton AddButton( this Toolbar toolbar, string text, Texture texture, Action action )
 	{
-		return toolbar.AddChild( new TextureButton( text, texture, action ) );
+		return toolbar.AddChild( new TextureIconButton( text, texture, action ) );
 	}
 
-	public static TextureButton AddButton( this Toolbar toolbar, string text, Texture texture, string className, Action action )
+	public static TextureIconButton AddButton( this Toolbar toolbar, string text, Texture texture, string className, Action action )
 	{
-		TextureButton button = toolbar.AddChild( new TextureButton( text, texture, className, action ) );
-		return toolbar.AddChild( new TextureButton( text, texture, className, action ) );
+		TextureIconButton button = toolbar.AddChild( new TextureIconButton( text, texture, className, action ) );
+		return toolbar.AddChild( new TextureIconButton( text, texture, className, action ) );
 	}
 }
