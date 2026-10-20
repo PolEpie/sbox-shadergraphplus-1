@@ -28,7 +28,6 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 	private StatusBarPanel _statusBar;
 	private OutputPanel _output;
 
-
 	private ShaderGraphPlus.ShaderGraphPlus _graph;
 	private ShaderTemplateResource _shaderTemplate;
 	private Asset _asset;
@@ -93,13 +92,28 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 		var toolbar = AddChild( new Toolbar() );
 		toolbar.AddClass( "main-toolbar" );
 
-		toolbar.AddButton( "New", "create_new_folder", New );
-		toolbar.AddButton( "Open", "folder_open", Open );
-		toolbar.AddButton( "Save", "save", Save );
+		toolbar.AddButton( "New", Texture.Load( "/tools/images/common/new.png" ), New );
+		toolbar.AddButton( "Open", Texture.Load( "/tools/images/common/open.png" ), Open );
+		toolbar.AddButton( "Save", Texture.Load( "/tools/images/common/save.png" ), Save );
 
 		toolbar.AddSeparator();
 
-		toolbar.AddButton( "Compile", "build", Compile );
+		toolbar.AddButton( "Compile", Texture.Load( "/tools/images/common/reload.png" ), Compile );
+
+		toolbar.AddButton( "Auto Compile", Texture.Load( "/tools/images/model_editor/auto_recompile.png" ), () =>
+		{
+			_autoCompile = !_autoCompile;
+
+			if ( _autoCompile )
+			{
+				SGPLogger.Info( "Enabled AutoCompile" );
+				Compile();
+			}
+			else
+			{
+				SGPLogger.Info( "Disabled AutoCompile" );
+			}
+		} );
 
 		toolbar.AddSpacer();
 	}
