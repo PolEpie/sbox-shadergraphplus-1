@@ -10,11 +10,6 @@ namespace ShaderGraphPlusPanelTest;
 
 public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 {
-	/// <summary>
-	/// Most results a filtered node list shows, like the Qt editor's.
-	/// </summary>
-	const int MaxFilteredResults = 20;
-
 
 	public new ShaderGraphPlus.ShaderGraphPlus Graph
 	{
