@@ -36,13 +36,6 @@ public sealed partial class PreviewPanel : Panel
 		Custom
 	}
 
-	/// <summary>
-	/// Shader time, as the preview shaders read it. The compiler's Time node reads this attribute
-	/// instead of g_flTime when compiling for the preview (see <c>GraphCompiler.IsPreview</c>), and
-	/// the Qt preview feeds it the same way.
-	/// </summary>
-	private const string PreviewTimeAttribute = "g_flPreviewTime";
-
 	private static readonly float[] TimeScales = [0.25f, 0.5f, 1.0f, 2.0f, 4.0f];
 
 	// Fly keys being held, by normalised button name ("w", "lshift")
@@ -115,7 +108,7 @@ public sealed partial class PreviewPanel : Panel
 
 			if ( _modelRenderer.IsValid() )
 			{
-				_modelRenderer.Attributes.Set( "g_iStageId", field ? _stageId : ShaderGraphPlusGlobals.GraphCompiler.NoNodePreviewID );
+				_modelRenderer.Attributes.Set( ShaderGraphPlusGlobals.PreviewShaderAttributes.StageID, field ? _stageId : ShaderGraphPlusGlobals.GraphCompiler.NoNodePreviewID );
 			}
 		}
 	}

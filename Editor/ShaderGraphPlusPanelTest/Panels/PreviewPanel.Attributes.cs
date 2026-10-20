@@ -171,11 +171,11 @@ public sealed partial class PreviewPanel
 
 		if ( Material.Flags.IsSky )
 		{
-			_previewScene.RenderAttributes.Set( "g_iStageId", EnableNodePreview ? _stageId : ShaderGraphPlusGlobals.GraphCompiler.NoNodePreviewID );
+			_previewScene.RenderAttributes.Set( ShaderGraphPlusGlobals.PreviewShaderAttributes.StageID, EnableNodePreview ? _stageId : ShaderGraphPlusGlobals.GraphCompiler.NoNodePreviewID );
 		}
 		else if ( _modelRenderer.IsValid() )
 		{
-			_modelRenderer.Attributes.Set( "g_iStageId", EnableNodePreview ? _stageId : ShaderGraphPlusGlobals.GraphCompiler.NoNodePreviewID );
+			_modelRenderer.Attributes.Set( ShaderGraphPlusGlobals.PreviewShaderAttributes.StageID, EnableNodePreview ? _stageId : ShaderGraphPlusGlobals.GraphCompiler.NoNodePreviewID );
 		}
 	}
 
@@ -282,22 +282,22 @@ public sealed partial class PreviewPanel
 		{
 			if ( Material.Flags.IsSky )
 			{
-				_previewScene.RenderAttributes.Set( "g_iStageId", _stageId );
+				_previewScene.RenderAttributes.Set( ShaderGraphPlusGlobals.PreviewShaderAttributes.StageID, _stageId );
 			}
 			else
 			{
-				_modelRenderer.Attributes.Set( "g_iStageId", _stageId );
+				_modelRenderer.Attributes.Set( ShaderGraphPlusGlobals.PreviewShaderAttributes.StageID, _stageId );
 			}
 		}
 		else
 		{
 			if ( Material.Flags.IsSky )
 			{
-				_previewScene.RenderAttributes.Set( "g_iStageId", ShaderGraphPlusGlobals.GraphCompiler.NoNodePreviewID );
+				_previewScene.RenderAttributes.Set( ShaderGraphPlusGlobals.PreviewShaderAttributes.StageID, ShaderGraphPlusGlobals.GraphCompiler.NoNodePreviewID );
 			}
 			else
 			{
-				_modelRenderer.Attributes.Set( "g_iStageId", ShaderGraphPlusGlobals.GraphCompiler.NoNodePreviewID );
+				_modelRenderer.Attributes.Set( ShaderGraphPlusGlobals.PreviewShaderAttributes.StageID, ShaderGraphPlusGlobals.GraphCompiler.NoNodePreviewID );
 			}
 		}
 	}
@@ -340,6 +340,6 @@ public sealed partial class PreviewPanel
 		if ( !Paused )
 			_previewTime += RealTime.Delta * TimeScale;
 
-		_modelRenderer.Attributes.Set( PreviewTimeAttribute, _previewTime );
+		_modelRenderer.Attributes.Set( ShaderGraphPlusGlobals.PreviewShaderAttributes.PreviewTime, _previewTime );
 	}
 }

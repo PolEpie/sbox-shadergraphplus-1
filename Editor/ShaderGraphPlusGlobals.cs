@@ -1,6 +1,6 @@
 ﻿namespace ShaderGraphPlus;
 
-internal static class ShaderGraphPlusGlobals
+public static class ShaderGraphPlusGlobals
 {
 	internal static class GraphCompiler
 	{
@@ -9,7 +9,18 @@ internal static class ShaderGraphPlusGlobals
 
 	internal static class Preview
 	{
-		internal static Material DefaultMaterial = Material.Load( "materials/core/shader_editor.vmat" );
+		internal static Material DefaultMaterial => Material.Load( "materials/core/shader_editor.vmat" );
+	}
+
+	public static class PreviewShaderAttributes
+	{
+		/// <summary>
+		/// Shader time, as the preview shaders read it. The compiler's Time node reads this attribute
+		/// instead of g_flTime when compiling for the preview.
+		/// </summary>
+		internal const string PreviewTime = "g_flPreviewTime";
+
+		internal const string StageID = "g_iStageId";
 	}
 
 	internal static class BlackboardGlobals

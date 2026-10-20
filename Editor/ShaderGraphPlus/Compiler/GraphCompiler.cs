@@ -1847,8 +1847,8 @@ public sealed partial class GraphCompiler
 				sb.AppendLine( $"{typeName} {result.Key} < Attribute( \"{result.Key}\" ); >;" );
 			}
 
-			sb.AppendLine( "float g_flPreviewTime < Attribute( \"g_flPreviewTime\" ); >;" );
-			sb.AppendLine( $"int g_iStageId < Attribute( \"g_iStageId\" ); >;" );
+			sb.AppendLine( $"float {ShaderGraphPlusGlobals.PreviewShaderAttributes.PreviewTime} < Attribute( \"{ShaderGraphPlusGlobals.PreviewShaderAttributes.PreviewTime}\" ); >;" );
+			sb.AppendLine( $"int {ShaderGraphPlusGlobals.PreviewShaderAttributes.StageID} < Attribute( \"{ShaderGraphPlusGlobals.PreviewShaderAttributes.StageID}\" ); >;" );
 		}
 		else
 		{
@@ -2033,7 +2033,7 @@ public sealed partial class GraphCompiler
 					}
 					else if ( result.localResult.CanPreview && result.localResult.ShouldPreview && result.localResult.PreviewID != ShaderGraphPlusGlobals.GraphCompiler.NoNodePreviewID )
 					{
-						sb.AppendLine( IndentString( $"if ( g_iStageId == {result.localResult.PreviewID} ) return {result.localResult.Cast( 4, 1.0f )};", indentLevel ) );
+						sb.AppendLine( IndentString( $"if ( {ShaderGraphPlusGlobals.PreviewShaderAttributes.StageID} == {result.localResult.PreviewID} ) return {result.localResult.Cast( 4, 1.0f )};", indentLevel ) );
 					}
 				}
 			}

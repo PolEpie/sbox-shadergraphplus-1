@@ -17,6 +17,6 @@ public sealed class Time : ShaderNodePlus
 	[Hide]
 	public NodeResult.Func Result => ( GraphCompiler compiler ) =>
 	{
-		return new NodeResult( ResultType.Float, compiler.IsPreview ? "g_flPreviewTime" : "g_flTime", compiler.IsNotPreview );
+		return new NodeResult( ResultType.Float, compiler.IsPreview ? ShaderGraphPlusGlobals.PreviewShaderAttributes.PreviewTime : "g_flTime", compiler.IsNotPreview );
 	};
 }

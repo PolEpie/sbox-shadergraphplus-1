@@ -533,7 +533,7 @@ public sealed class Preview : SceneRenderingWidget
 
 			if ( _sceneObject.IsValid() )
 			{
-				_sceneObject.Attributes.Set( "g_iStageId", _enableNodePreview ? _stageId : NoPreviewID );
+				_sceneObject.Attributes.Set( ShaderGraphPlusGlobals.PreviewShaderAttributes.StageID, _enableNodePreview ? _stageId : NoPreviewID );
 			}
 		}
 	}
@@ -923,22 +923,22 @@ public sealed class Preview : SceneRenderingWidget
 		{
 			if ( _material.Flags.IsSky )
 			{
-				Scene.RenderAttributes.Set( "g_iStageId", _stageId );
+				Scene.RenderAttributes.Set( ShaderGraphPlusGlobals.PreviewShaderAttributes.StageID, _stageId );
 			}
 			else
 			{
-				_sceneObject.Attributes.Set( "g_iStageId", _stageId );
+				_sceneObject.Attributes.Set( ShaderGraphPlusGlobals.PreviewShaderAttributes.StageID, _stageId );
 			}
 		}
 		else
 		{
 			if ( _material.Flags.IsSky )
 			{
-				Scene.RenderAttributes.Set( "g_iStageId", NoPreviewID );
+				Scene.RenderAttributes.Set( ShaderGraphPlusGlobals.PreviewShaderAttributes.StageID, NoPreviewID );
 			}
 			else
 			{
-				_sceneObject.Attributes.Set( "g_iStageId", NoPreviewID );
+				_sceneObject.Attributes.Set( ShaderGraphPlusGlobals.PreviewShaderAttributes.StageID, NoPreviewID );
 			}
 		}
 	}
@@ -1084,11 +1084,11 @@ public sealed class Preview : SceneRenderingWidget
 
 		if ( _material.Flags.IsSky )
 		{
-			Scene.RenderAttributes.Set( "g_iStageId", _enableNodePreview ? _stageId : NoPreviewID );
+			Scene.RenderAttributes.Set( ShaderGraphPlusGlobals.PreviewShaderAttributes.StageID, _enableNodePreview ? _stageId : NoPreviewID );
 		}
 		else if ( _sceneObject.IsValid() )
 		{
-			_sceneObject.Attributes.Set( "g_iStageId", _enableNodePreview ? _stageId : NoPreviewID );
+			_sceneObject.Attributes.Set( ShaderGraphPlusGlobals.PreviewShaderAttributes.StageID, _enableNodePreview ? _stageId : NoPreviewID );
 		}
 	}
 
@@ -1309,7 +1309,7 @@ public sealed class Preview : SceneRenderingWidget
 		_sceneObject.ColorTint = Tint;
 		_sceneObject.Rotation = Rotation.FromYaw( _modelYawRotation );
 		_sceneObject.Update( RealTime.Delta );
-		_sceneObject.Attributes.Set( "g_flPreviewTime", RealTime.Now );
+		_sceneObject.Attributes.Set( ShaderGraphPlusGlobals.PreviewShaderAttributes.PreviewTime, RealTime.Now );
 
 		_ground.Position = Vector3.Up * (_model.RenderBounds.Mins.z - 0.1f);
 
