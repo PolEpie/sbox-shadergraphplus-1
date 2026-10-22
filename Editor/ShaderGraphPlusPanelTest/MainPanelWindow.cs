@@ -296,50 +296,7 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		_statusBar = AddChild( new StatusBarPanel() );
 
-		foreach ( var value in _boolAttributes )
-		{
-			_preview.SetAttribute( value.Key, value.Value );
-		}
-
-		foreach ( var value in _floatAttributes )
-		{
-			_preview.SetAttribute( value.Key, value.Value );
-		}
-
-		foreach ( var value in _float2Attributes )
-		{
-			_preview.SetAttribute( value.Key, value.Value );
-		}
-
-		foreach ( var value in _float3Attributes )
-		{
-			_preview.SetAttribute( value.Key, value.Value );
-		}
-
-		foreach ( var value in _float4Attributes )
-		{
-			_preview.SetAttribute( value.Key, value.Value );
-		}
-
-		foreach ( var value in _samplerStateAttributes )
-		{
-			_preview.SetAttribute( value.Key, value.Value );
-		}
-
-		foreach ( var value in _textureAttributes )
-		{
-			_preview.SetAttribute( value.Key, value.Value );
-		}
-
-		foreach ( var value in _dynamicComboIntAttributes )
-		{
-			_preview.SetDynamicCombo( value.Key, value.Value );
-		}
-
-		foreach ( var value in _shaderFeatures )
-		{
-			_preview.SetFeature( value.Key, value.Value );
-		}
+		SetAllAttributes();
 
 		DockHost.Register( "graph", "Graph", _graphView, canClose: false, icon: "account_tree" );
 		DockHost.Register( "palette", "Palette", _palette, icon: "palette" );
@@ -370,6 +327,55 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 		_savedLayout = _defaultLayout;
 
 		Compile();
+	}
+
+	private void SetAllAttributes()
+	{
+
+		foreach ( var value in _boolAttributes )
+		{
+			_preview?.SetAttribute( value.Key, value.Value );
+		}
+
+		foreach ( var value in _floatAttributes )
+		{
+			_preview?.SetAttribute( value.Key, value.Value );
+		}
+
+		foreach ( var value in _float2Attributes )
+		{
+			_preview?.SetAttribute( value.Key, value.Value );
+		}
+
+		foreach ( var value in _float3Attributes )
+		{
+			_preview?.SetAttribute( value.Key, value.Value );
+		}
+
+		foreach ( var value in _float4Attributes )
+		{
+			_preview?.SetAttribute( value.Key, value.Value );
+		}
+
+		foreach ( var value in _samplerStateAttributes )
+		{
+			_preview?.SetAttribute( value.Key, value.Value );
+		}
+
+		foreach ( var value in _textureAttributes )
+		{
+			_preview?.SetAttribute( value.Key, value.Value );
+		}
+
+		foreach ( var value in _dynamicComboIntAttributes )
+		{
+			_preview?.SetDynamicCombo( value.Key, value.Value );
+		}
+
+		foreach ( var value in _shaderFeatures )
+		{
+			_preview?.SetFeature( value.Key, value.Value );
+		}
 	}
 
 	private void OnPropertyUpdated( SerializedProperty serializedProperty )
