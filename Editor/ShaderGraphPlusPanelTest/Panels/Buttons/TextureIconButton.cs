@@ -1,6 +1,5 @@
 ﻿using Sandbox.UI;
 using Sandbox.UI.Construct;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace ShaderGraphPlusPanelTest;
 
