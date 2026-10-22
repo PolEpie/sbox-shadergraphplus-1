@@ -12,8 +12,8 @@ public class TextureIconButton : Button
 
 	public TextureIconButton( string text, Action action = null ) : base( text, action )
 	{
-	} 
-	
+	}
+
 	public TextureIconButton( string text, string className, Action action ) : base( text, null, className, action )
 	{
 	}

@@ -100,10 +100,11 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		toolbar.AddButton( "Compile", Texture.Load( "/tools/images/common/reload.png" ), Compile );
 
-		toolbar.AddButton( "Auto Compile", 
+		toolbar.AddButton( "Auto Compile",
 			Texture.Load( "/tools/images/model_editor/auto_recompile.png" ),
 			Texture.Load( "/tools/images/model_editor/supress_auto_recompile.png" ),
-		() => {
+		() =>
+		{
 			_autoCompile = !_autoCompile;
 
 			if ( _autoCompile )
@@ -542,7 +543,7 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 		ClearAttributes();
 
 		AddToRecentFiles( path );
-		
+
 		// Just generate it twice so that some attributes actually get set.
 		GeneratePreviewCode();
 		GeneratePreviewCode();
