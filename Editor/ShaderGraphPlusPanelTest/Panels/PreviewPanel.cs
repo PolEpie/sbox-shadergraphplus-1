@@ -37,6 +37,7 @@ internal sealed class ThrobberPanel : Panel
 	{
 		base.OnDraw( painter );
 
+		// TODO
 	}
 }
 
