@@ -369,12 +369,11 @@ public sealed partial class PreviewPanel : Panel
 		AddModelButton( overlayToolbar, Primitive.Box, "view_in_ar", "Box" );
 		AddModelButton( overlayToolbar, Primitive.Sphere, "circle", "Sphere" );
 		AddModelButton( overlayToolbar, Primitive.Plane, "square", "Plane" );
-		AddIconButton( overlayToolbar, "folder_open", "Pick a model..." ).AddEventListener( "onclick", PickModel );
+		AddIconButton( overlayToolbar, "folder_open", "Pick a model...", PickModel );
 
 		overlayToolbar.Add.Panel( "separator" );
 
-		_playButton = AddIconButton( overlayToolbar, "pause", "Pause shader time" );
-		_playButton.AddEventListener( "onclick", () => Paused = !Paused );
+		_playButton = AddIconButton( overlayToolbar, "pause", "Pause shader time", () => Paused = !Paused );
 		_playIcon = _playButton.GetChild( 0 ) as Label;
 
 		_speedButton = overlayToolbar.Add.Panel( "iconbutton speed" );
@@ -385,11 +384,8 @@ public sealed partial class PreviewPanel : Panel
 
 		overlayToolbar.Add.Panel( "spacer" );
 
-		_lightButton = AddIconButton( overlayToolbar, "lightbulb", "Preview light" );
-		_lightButton.AddEventListener( "onclick", () => ShowLight = !ShowLight );
-
-		_settingsButton = AddIconButton( overlayToolbar, "settings", "Preview Settings" );
-		_settingsButton.AddEventListener( "onclick", OpenSettings );
+		_lightButton = AddIconButton( overlayToolbar, "lightbulb", "Preview light", () => ShowLight = !ShowLight );
+		_settingsButton = AddIconButton( overlayToolbar, "settings", "Preview Settings", OpenSettings );
 
 		var overlayFooter = Add.Panel( "footer" );
 		overlayFooter.Add.Label( "LMB orbit · RMB look · MMB pan · WASD/QE fly · Shift fast · wheel zoom", "hint" );
@@ -479,29 +475,19 @@ public sealed partial class PreviewPanel : Panel
 		}
 	}
 
-	/// <summary>
-	/// A square icon button on the overlay. Its press doesn't reach the viewport, so using the
-	/// toolbar never starts an orbit drag.
-	/// </summary>
-	private static Panel AddIconButton( Panel parent, string icon, string tooltip )
+	private static Panel AddIconButton( Panel parent, string icon, string tooltip, Action onClick )
 	{
 		var button = parent.IconButton( icon, null );
 		button.Tooltip = tooltip;
 		button.AddEventListener( "onmousedown", e => e.StopPropagation() );
-		return button;
-	}
+		button.AddEventListener( "onclick", () => onClick?.Invoke() );
 
-	private static Panel AddButton( Panel parent, string text, string icon )
-	{
-		Sandbox.UI.Button button = parent.AddChild( new Sandbox.UI.Button( text, icon ) );
-		button.AddEventListener( "onmousedown", e => e.StopPropagation() );
 		return button;
 	}
 
 	private void AddModelButton( Panel parent, Primitive primitive, string icon, string tooltip )
 	{
-		var button = AddIconButton( parent, icon, tooltip );
-		button.AddEventListener( "onclick", () => ShowPrimitive( primitive ) );
+		var button = AddIconButton( parent, icon, tooltip, () => ShowPrimitive( primitive ) );
 		_modelButtons[primitive] = button;
 	}
 
