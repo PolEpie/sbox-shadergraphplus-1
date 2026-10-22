@@ -639,7 +639,9 @@ public sealed partial class PreviewPanel : Panel
 
 	static readonly HashSet<string> FlyKeys = ["w", "a", "s", "d", "q", "e", "lshift", "rshift"];
 
-	/// <summary>Key presses and releases reach the focused panel - the view, once it's been clicked.</summary>
+	/// <summary>
+	/// Key presses and releases reach the focused panel - the view, once it's been clicked.
+	/// </summary>
 	public override void OnButtonEvent( ButtonEvent e )
 	{
 		if ( !FlyKeys.Contains( e.Button ) )
@@ -658,7 +660,9 @@ public sealed partial class PreviewPanel : Panel
 		}
 	}
 
-	/// <summary>Releases are only sent to the focused panel - let go of everything rather than fly on forever.</summary>
+	/// <summary>
+	/// Releases are only sent to the focused panel - let go of everything rather than fly on forever.
+	/// </summary>
 	protected override void OnBlur( PanelEvent e )
 	{
 		_held.Clear();
