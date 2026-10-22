@@ -355,6 +355,11 @@ public sealed partial class PreviewPanel : Panel
 			_camera = _cameraObject.Components.Create<CameraComponent>();
 			_camera.BackgroundColor = BackgroundColor;
 			_camera.ZFar = 10000;
+
+			var envProbeObject = _previewScene.CreateObject();
+			envProbeObject.Name = "Preview Scene Envmap";
+			var envProbe = envProbeObject.Components.Create<EnvmapProbe>();
+			envProbe.Texture = Texture.Load( "textures/cubemaps/default2.vtex" );
 		}
 
 		_scenePanel = AddChild<ScenePanel>();
