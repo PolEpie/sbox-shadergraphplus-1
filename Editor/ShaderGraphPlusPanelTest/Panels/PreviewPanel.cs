@@ -147,7 +147,7 @@ public sealed partial class PreviewPanel : Panel
 
 	/// <summary>
 	/// Light the model with the preview's sun. Off leaves only the ambient light, to check emission
-	/// or how a material reads unlit. Remembered between sessions.
+	/// or how a material reads unlit.
 	/// </summary>
 	public bool ShowLight
 	{
@@ -164,7 +164,7 @@ public sealed partial class PreviewPanel : Panel
 	}
 
 	/// <summary>
-	/// If true we'll show the shybox
+	/// If true we'll show the shybox.
 	/// </summary>
 	public bool ShowSkybox
 	{
@@ -182,7 +182,7 @@ public sealed partial class PreviewPanel : Panel
 	}
 
 	/// <summary>
-	/// Color of the background when the skybox is not being drawn
+	/// Color of the background when the skybox is not being drawn.
 	/// </summary>
 	public Color BackgroundColor
 	{
@@ -239,7 +239,7 @@ public sealed partial class PreviewPanel : Panel
 	}
 
 	/// <summary>
-	/// Color tint of the model in the preview
+	/// Color tint of the model in the preview.
 	/// </summary>
 	public Color Tint
 	{
@@ -284,7 +284,9 @@ public sealed partial class PreviewPanel : Panel
 		_postProcessCmdList.Blit( Material, _modelRenderer.Attributes );
 	}
 
-	/// <summary>Freeze shader preview time.</summary>
+	/// <summary>
+	/// Freeze preview time.
+	/// </summary>
 	public bool Paused
 	{
 		get;
