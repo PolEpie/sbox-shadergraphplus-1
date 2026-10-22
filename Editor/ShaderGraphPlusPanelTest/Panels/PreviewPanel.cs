@@ -9,6 +9,37 @@ using Label = Sandbox.UI.Label;
 
 namespace ShaderGraphPlusPanelTest;
 
+internal sealed class ThrobberPanel : Panel
+{
+	private readonly Texture _texture;
+
+	private bool _enabled;
+	private RealTimeSince _timeSinceDisabled;
+	public bool Enabled
+	{
+		set
+		{
+			_enabled = value;
+
+			if ( !value )
+			{
+				_timeSinceDisabled = 0;
+			}
+		}
+	}
+
+	public ThrobberPanel() : base()
+	{
+		_texture = Texture.Load( "tools/images/common/busy.png", true );
+	}
+
+	public override void OnDraw( Painter painter )
+	{
+		base.OnDraw( painter );
+
+	}
+}
+
 public sealed partial class PreviewPanel : Panel
 {
 	private const string BoxModel = "models/dev/box.vmdl";
@@ -54,6 +85,8 @@ public sealed partial class PreviewPanel : Panel
 	private Panel _skyButton;
 	private Sandbox.UI.Menu _speedMenu;
 	private Sandbox.UI.Menu _settingsMenu;
+
+	private ThrobberPanel _throbber;
 
 	private int _stageId;
 	private float _previewTime;
@@ -362,6 +395,8 @@ public sealed partial class PreviewPanel : Panel
 
 		var overlayFooter = Add.Panel( "footer" );
 		overlayFooter.Add.Label( "LMB orbit · RMB look · MMB pan · WASD/QE fly · Shift fast · wheel zoom", "hint" );
+
+		_throbber = AddChild( new ThrobberPanel() );
 
 		// The box is the default
 		ShowPrimitive( Primitive.Box );
