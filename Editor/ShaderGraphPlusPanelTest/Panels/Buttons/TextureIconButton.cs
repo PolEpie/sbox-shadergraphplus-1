@@ -12,12 +12,10 @@ public class TextureIconButton : Button
 
 	public TextureIconButton( string text, Action action = null ) : base( text, action )
 	{
-		
 	} 
 	
 	public TextureIconButton( string text, string className, Action action ) : base( text, null, className, action )
 	{
-	
 	}
 
 	public TextureIconButton( string text, Texture texture, Action action = null ) : this( text, action )
@@ -60,7 +58,7 @@ public sealed class ToggleTextureIconButton : TextureIconButton
 		AddEventListener( "onclick", () => { Toggle = !Toggle; } );
 	}
 
-	public ToggleTextureIconButton( string text, string className, Action action ) : base( text, null, className, action )
+	public ToggleTextureIconButton( string text, string className, Action action ) : base( text, className, action )
 	{
 		AddEventListener( "onclick", () => { Toggle = !Toggle; } );
 	}
