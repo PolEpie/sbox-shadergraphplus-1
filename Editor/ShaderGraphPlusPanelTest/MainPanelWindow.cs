@@ -317,7 +317,7 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		DockHost.Dock( "console", "output", position: DockPosition.Center, fraction: 0.26f );
 
-		DockHost.Dock( "palette", "output", position: DockPosition.Center, fraction: 0.24f );
+		DockHost.Dock( "palette", "output", position: DockPosition.Center, fraction: 0.26f );
 
 		DockHost.Dock( "generatedcode", "output", position: DockPosition.Center, fraction: 0.26f );
 		DockHost.Dock( "properties", "preview", DockPosition.Bottom, 0.55f );
