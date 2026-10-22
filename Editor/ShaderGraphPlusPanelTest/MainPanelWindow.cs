@@ -534,7 +534,9 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 		ClearAttributes();
 
 		AddToRecentFiles( path );
-
+		
+		// Just generate it twice so that some attributes actually get set.
+		GeneratePreviewCode();
 		GeneratePreviewCode();
 
 		var generatedShaderPath = System.IO.Path.ChangeExtension( _asset.AbsolutePath, ".shader" );
