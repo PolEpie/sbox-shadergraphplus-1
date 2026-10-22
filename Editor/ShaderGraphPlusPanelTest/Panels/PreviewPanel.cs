@@ -13,19 +13,10 @@ internal sealed class ThrobberPanel : Panel
 {
 	private readonly Texture _texture;
 
-	private bool _enabled;
-	private RealTimeSince _timeSinceDisabled;
 	public bool Enabled
 	{
-		set
-		{
-			_enabled = value;
-
-			if ( !value )
-			{
-				_timeSinceDisabled = 0;
-			}
-		}
+		get;
+		set;
 	}
 
 	public ThrobberPanel() : base()
@@ -37,7 +28,13 @@ internal sealed class ThrobberPanel : Panel
 	{
 		base.OnDraw( painter );
 
-		// TODO
+		if ( !Enabled ) return;
+
+		var size = 48;
+		var position = new Vector2( painter.Bounds.Height, painter.Bounds.Height - size );
+		var rect = new Rect( position.x, position.y, size, size );
+
+		painter.Texture( _texture, rect );
 	}
 }
 
@@ -316,7 +313,7 @@ public sealed partial class PreviewPanel : Panel
 	{
 		set
 		{
-			// _thobber.Enabled = value;
+			_throbber.Enabled = value;
 		}
 	}
 
