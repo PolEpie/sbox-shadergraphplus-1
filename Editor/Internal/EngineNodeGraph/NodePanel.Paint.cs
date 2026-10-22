@@ -55,20 +55,6 @@ public partial class NodePanel
 		var hasError = !string.IsNullOrWhiteSpace( Node.ErrorMessage );
 		var body = BodyColor;
 
-		// Selection, highlight or error glow; no depth shadow
-		if ( Selected )
-		{
-			paint.DrawShadow( rect, radius, Graph.SelectionColor.WithAlpha( 0.45f ), 10f, default, 1f );
-		}
-		else if ( Highlighted )
-		{
-			paint.DrawShadow( rect, radius, Graph.HighlightColor.WithAlpha( 0.55f ), 12f, default, 2f );
-		}
-		else if ( hasError )
-		{
-			paint.DrawShadow( rect, radius, ErrorOutline.WithAlpha( 0.3f ), 10f );
-		}
-
 		paint.ClearPen();
 		paint.SetBrush( body );
 		paint.DrawRect( rect, radius );
