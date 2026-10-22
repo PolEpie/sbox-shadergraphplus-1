@@ -357,7 +357,7 @@ public sealed partial class PreviewPanel : Panel
 			_camera.ZFar = 10000;
 
 			var envProbeObject = _previewScene.CreateObject();
-			envProbeObject.Name = "Preview Scene Envmap";
+			envProbeObject.Name = "Preview Envmap";
 			var envProbe = envProbeObject.Components.Create<EnvmapProbe>();
 			envProbe.Texture = Texture.Load( "textures/cubemaps/default2.vtex" );
 		}
