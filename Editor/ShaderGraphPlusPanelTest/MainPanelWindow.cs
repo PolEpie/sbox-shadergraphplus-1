@@ -221,6 +221,13 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 		{
 			_graphView.RebuildFromGraph();
 		};
+		// After the graph view's handler: it clears the graph selection, which shows the graph,
+		// then the picked parameter takes over. Unpicking leaves whatever the graph selection shows.
+		_blackboard.OnSelected += parameter =>
+		{
+			if ( parameter is not null )
+				_properties.Target = parameter;
+		};
 
 		_graphView = new ShaderGraphPlusViewPanel( _blackboard );
 		_graphView.Graph = _graph;
@@ -247,24 +254,6 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 
 			_properties.Target = node;
 		};
-
-		_output = new OutputPanel();
-
-		_palette = new PalettePanel( IsSubgraph );
-
-		// After the graph view's handler: it clears the graph selection, which shows the graph,
-		// then the picked parameter takes over. Unpicking leaves whatever the graph selection shows.
-		_blackboard.OnSelected += parameter =>
-		{
-			if ( parameter is not null ) _properties.Target = parameter;
-		};
-
-		_properties = new PropertiesPanel();
-		_properties.Target = _graph;
-		_properties.PropertyUpdated += OnPropertyUpdated;
-
-		_preview = new PreviewPanel();
-		_preview.OnModelChanged = ( model ) => _graph.Model = model?.Name;
 
 		var nodeTypes = EditorTypeLibrary.GetTypes<ShaderNodePlus>()
 			.Where( x => !x.IsAbstract && !x.HasAttribute<HideAttribute>() ).OrderBy( x => x.Name );
@@ -293,6 +282,15 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 			}
 		}
 
+		_preview = new PreviewPanel();
+		_preview.OnModelChanged = ( model ) => _graph.Model = model?.Name;
+
+		_properties = new PropertiesPanel();
+		_properties.Target = _graph;
+		_properties.PropertyUpdated += OnPropertyUpdated;
+
+		_output = new OutputPanel();
+		_palette = new PalettePanel( IsSubgraph );
 		_generatedCodeView = new GeneratedCodePanel();
 
 		_statusBar = AddChild( new StatusBarPanel() );
