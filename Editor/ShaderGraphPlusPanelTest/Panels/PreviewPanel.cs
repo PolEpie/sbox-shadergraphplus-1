@@ -413,8 +413,7 @@ public sealed partial class PreviewPanel : Panel
 	{
 		_settingsMenu?.Delete( true );
 
-		var menu = new Sandbox.UI.Menu();
-		_settingsMenu = menu;
+		_settingsMenu = new Sandbox.UI.Menu();
 
 		_gridButton = _settingsMenu.AddOption( "Show grid", "grid_on", () =>
 		{
@@ -426,37 +425,30 @@ public sealed partial class PreviewPanel : Panel
 			ShowSkybox = !ShowSkybox;
 		} );
 
-		menu.Closed += OnSettingsMenuClosed;
-		menu.Open( _settingsButton, Popup.PositionMode.UnderMouse );
+		_settingsMenu.Closed += ( _ ) => CloseMenu( ref _settingsMenu );
+		_settingsMenu.Open( _settingsButton, Popup.PositionMode.UnderMouse );
 	}
 
 	private void OpenSpeedMenu()
 	{
 		_speedMenu?.Delete( true );
 
-		var menu = new Sandbox.UI.Menu();
-		_speedMenu = menu;
+		_speedMenu = new Sandbox.UI.Menu();
 
 		foreach ( var scale in TimeScales )
 		{
 			var value = scale;
-			menu.AddOption( $"{value:0.##}x", value == TimeScale ? "check" : null, () => TimeScale = value );
+			_speedMenu.AddOption( $"{value:0.##}x", value == TimeScale ? "check" : null, () => TimeScale = value );
 		}
 
-		menu.Closed += OnSpeedMenuClosed;
-		menu.Open( _speedButton, Popup.PositionMode.UnderMouse );
+		_speedMenu.Closed += ( _ ) => CloseMenu( ref _speedMenu );
+		_speedMenu.Open( _speedButton, Popup.PositionMode.UnderMouse );
 	}
 
-	private void OnSpeedMenuClosed( Sandbox.UI.Menu menu )
+	private static void CloseMenu( ref Sandbox.UI.Menu menu )
 	{
-		if ( _speedMenu == menu ) _speedMenu = null;
 		menu.Delete( true );
-	}
-
-	private void OnSettingsMenuClosed( Sandbox.UI.Menu menu )
-	{
-		if ( _settingsMenu == menu ) _settingsMenu = null;
-		menu.Delete( true );
+		menu = null;
 	}
 
 	public void LoadSettings( PreviewSettings settings )
