@@ -887,7 +887,11 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		_recentFilesMenu.Clear();
 
-		var clearRecentFiles = _recentFilesMenu.AddOption( "Clear recent files", null, ClearRecentFiles );
+		var clearRecentFiles = _recentFilesMenu.AddOption( "Clear recent files", null, () =>
+		{
+			_recentFilesMenu.ParentMenu?.Close();
+			ClearRecentFiles();
+		} );
 		StatusTip( clearRecentFiles, "Clear recent files", -1f );
 
 		_recentFilesMenu.AddSeparator();
@@ -902,7 +906,12 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 
 			var filePath = _recentFiles[i];
 
-			var option = _recentFilesMenu.AddOption( $"{++fileCount} - {filePath}", null, () => PromptSave( () => Open( filePath ) ) );
+			var option = _recentFilesMenu.AddOption( $"{++fileCount} - {filePath}", null, () =>
+			{
+				_recentFilesMenu.ParentMenu?.Close();
+				PromptSave( () => Open( filePath ) );
+			} );
+
 			StatusTip( option, $"Open {filePath}", -1f );
 		}
 	}
