@@ -36,8 +36,9 @@ public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 		}
 	}
 
-	private readonly Dictionary<string, PanelNodeType> AvailableNodes = new( StringComparer.OrdinalIgnoreCase );
+	private readonly ShaderGraphPlusPanelTest _window;
 
+	private readonly Dictionary<string, PanelNodeType> AvailableNodes = new( StringComparer.OrdinalIgnoreCase );
 
 	protected override EngineNodeGraph.INodeType CommentNodeType { get; } = new PanelNodeType( new ClassNodeType( EditorTypeLibrary.GetType<CommentNode>() ) );
 
@@ -67,18 +68,19 @@ public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 		return node;
 	}
 
-	public ShaderGraphPlusViewPanel( BlackboardPanel blackboard ) : base()
+	public ShaderGraphPlusViewPanel( ShaderGraphPlusPanelTest window, BlackboardPanel blackboard ) : base()
 	{
 		SGPLogger.Info( $"TODO : ShaderGraphPlusViewPanel Constructor" );
 
 		AddClass( ShaderGraphPlusCssClasses.EditorDockPane );
 		AddClass( "sg-graph" );
 
-
+		_window = window;
 		_blackboard = blackboard;
 		_blackboard.OnSelected += OnParameterSelected;
 		SelectionChanged += OnGraphSelectionChanged;
 
+		AddEventListener( "onclick", () => OnGraphViewClicked() );
 	}
 
 	bool _pickingParameter;
@@ -96,9 +98,35 @@ public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 		_pickingParameter = false;
 	}
 
-	void OnGraphSelectionChanged()
+	private void OnGraphSelectionChanged()
 	{
-		if ( !_pickingParameter ) _blackboard?.Select( null );
+		if ( !_pickingParameter ) 
+			_blackboard?.Select( null );
+		
+		var nodePanel = SelectedNodes
+			.OrderByDescending( n => n is CommentPanel )
+			.FirstOrDefault();
+
+		if ( !nodePanel.IsValid() )
+		{
+			_window.OnNodeSelected( null );
+			return;
+		}
+
+		_window.OnNodeSelected( (BaseNodePlus)nodePanel.Node );
+	}
+
+	private void OnGraphViewClicked()
+	{
+		var item = SelectedNodes
+			.OrderByDescending( n => n is CommentPanel )
+			.FirstOrDefault();
+	
+		if ( !item.IsValid() )
+		{
+			_window.OnNodeSelected( null );
+			return;
+		}
 	}
 
 	/// <summary>

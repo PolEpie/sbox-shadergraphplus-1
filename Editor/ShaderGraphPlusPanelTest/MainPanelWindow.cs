@@ -229,32 +229,12 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 				_properties.Target = parameter;
 		};
 
-		_graphView = new ShaderGraphPlusViewPanel( _blackboard );
+		_graphView = new ShaderGraphPlusViewPanel( this, _blackboard );
 		_graphView.Graph = _graph;
 		_graphView.OnPushUndo = PushUndo;
 		_graphView.OnPushRedo = PushRedo;
 		_graphView.OnNodeValueChanged += () => SetDirty();
-		_graphView.SelectionChanged += () =>
-		{
-			// Nothing, or several, selected shows the graph, like the Qt editor
-			var selected = _graphView.SelectedNodes.Take( 2 ).ToArray();
-			if ( selected.Length != 1 )
-			{
-				_properties.Target = _graph;
-				return;
-			}
-
-			// A parameter node has nothing of its own to edit - show its parameter, like the Qt editor
-			var node = selected[0].Node;
-			if ( node is IBlackboardNode { ParameterIdentifier: var id } && id != default && _graph.TryFindParameter( id, out var parameter ) )
-			{
-				_properties.Target = parameter;
-				return;
-			}
-
-			_properties.Target = node;
-		};
-
+	
 		var nodeTypes = EditorTypeLibrary.GetTypes<ShaderNodePlus>()
 			.Where( x => !x.IsAbstract && !x.HasAttribute<HideAttribute>() ).OrderBy( x => x.Name );
 
@@ -394,6 +374,24 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		var shouldEvaluate = _properties.Target is not CommentNode;
 		SetDirty( shouldEvaluate );
+	}
+
+	public void OnNodeSelected( BaseNodePlus selectedNode )
+	{
+		if ( selectedNode == null )
+		{
+			_properties.Target = _graph;
+			return;
+		}
+			
+		// A parameter node has nothing of its own to edit - show its parameter, like the Qt editor
+		if ( selectedNode is IBlackboardNode { ParameterIdentifier: var id } && id != default && _graph.TryFindParameter( id, out var parameter ) )
+		{
+			_properties.Target = parameter;
+			return;
+		}
+
+		_properties.Target = selectedNode;
 	}
 
 	private void PromptSave( Action action )
