@@ -811,43 +811,6 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 		}
 	}
 
-	/// <summary>
-	/// The value type a compiled result stands for, or null when it isn't one a plug shows.
-	/// </summary>
-	private static Type ComponentType( NodeResult result )
-	{
-		if ( !result.IsValid() ) return null;
-
-		if ( result.ResultType == ResultType.VoidFunction )
-		{
-			return result.Components switch
-			{
-				1 => typeof( float ),
-				2 => typeof( Vector2 ),
-				3 => typeof( Vector3 ),
-				4 => typeof( Vector4 ),
-				_ => null,
-			};
-		}
-
-		return result.ResultType switch
-		{
-			ResultType.Bool => typeof( bool ),
-			ResultType.Int => typeof( int ),
-			ResultType.Float => typeof( float ),
-			ResultType.Vector2 => typeof( Vector2 ),
-			ResultType.Vector3 => typeof( Vector3 ),
-			ResultType.Vector4 => typeof( Vector4 ),
-			ResultType.Float2x2 => typeof( Float2x2 ),
-			ResultType.Float3x3 => typeof( Float3x3 ),
-			ResultType.Float4x4 => typeof( Float4x4 ),
-			ResultType.Sampler => typeof( Sampler ),
-			ResultType.Texture2D or ResultType.TextureCube => typeof( Texture ),
-			ResultType.Gradient => typeof( Gradient ),
-			_ => null,
-		};
-	}
-
 	private void SetDirty( bool evaluate = true )
 	{
 		_dirty = true;
