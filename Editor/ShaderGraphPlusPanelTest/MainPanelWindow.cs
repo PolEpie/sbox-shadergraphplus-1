@@ -635,7 +635,7 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 		);
 
 		confirm.Show();
-	
+
 		return;
 	}
 
