@@ -53,6 +53,11 @@ public class PanelDockWindow : Panel
 		PanelWindow.FromPanel( host )?.Focus();
 	}
 
+	protected void Close()
+	{
+		Window?.Dispose();
+	}
+
 	private void ConfigureFloatingWindow( RootPanel root )
 	{
 		root.AddClass( "mock-editor-surface" );

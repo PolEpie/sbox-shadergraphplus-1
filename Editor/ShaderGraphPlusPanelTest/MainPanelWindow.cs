@@ -619,11 +619,26 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 		return true;
 	}
 
-	void Quit()
+	private void Quit()
 	{
-		SGPLogger.Info( $"TODO : Quit ShaderGraphPlus Editor" );
+		if ( !_dirty )
+		{
+			Close();
+			return;
+		}
 
-		Window?.Dispose();
+		var confirm = new PopupWindow(
+			"Save Current Graph", "The open graph has unsaved changes. Would you like to save now?", "Cancel",
+			new Dictionary<string, Action>()
+			{
+				{ "No", () => { _dirty = false; Close(); } },
+				{ "Yes", () => { if ( SaveInternal( false ) ) Close(); } }
+			}
+		);
+
+		confirm.Show();
+	
+		return;
 	}
 
 	private void PushUndo( string name )
