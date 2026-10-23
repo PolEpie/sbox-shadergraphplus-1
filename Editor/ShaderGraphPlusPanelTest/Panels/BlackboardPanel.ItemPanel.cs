@@ -315,10 +315,10 @@ internal sealed class ParameterRow : BlackboardItem
 		if ( !string.IsNullOrWhiteSpace( Parameter.DisplayInfo.Description ) )
 			tip.Add.Label( Parameter.DisplayInfo.Description, "description" );
 
-		if ( TextureOf( Parameter ) is { DefaultTexture: { Length: > 0 } path } )
+		if ( TextureOf( Parameter ) is { DefaultTexture: { Length: > 0 } texturePath } )
 		{
-			tip.Add.Panel( "preview" ).Style.BackgroundImage = Texture.Load( $"thumb:{path}" );
-			Detail( tip, "Texture" ).Add.Label( path, "text" );
+			tip.Add.Panel( "preview" ).Style.BackgroundImage = Texture.Load( texturePath );
+			Detail( tip, "Texture" ).Add.Label( texturePath, "text" );
 		}
 		else if ( Parameter is not IBlackboardSubgraphOutputParameter )
 		{
