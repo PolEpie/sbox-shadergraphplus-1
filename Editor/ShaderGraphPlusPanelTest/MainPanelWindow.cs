@@ -235,7 +235,7 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 		_graphView.OnPushUndo = PushUndo;
 		_graphView.OnPushRedo = PushRedo;
 		_graphView.OnNodeValueChanged += () => SetDirty();
-	
+
 		var nodeTypes = EditorTypeLibrary.GetTypes<ShaderNodePlus>()
 			.Where( x => !x.IsAbstract && !x.HasAttribute<HideAttribute>() ).OrderBy( x => x.Name );
 
@@ -281,10 +281,10 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 		SetAllAttributes();
 
 		DockHost.Register( "graph", "Graph", _graphView, canClose: false, icon: "account_tree" );
-		
+
 		DockHost.Register( "preview", "Preview", _preview, icon: "photo" );
 		DockHost.Register( "properties", "Properties", _properties, icon: "tune" );
-		
+
 		DockHost.Register( "output", "Output", _output, icon: "notes" );
 		DockHost.Register( "console", "Console", () => new ConsolePanel(), icon: "text_snippet" );
 		DockHost.Register( "undohistory", "Undo History", _undoHistory, icon: "history" );
@@ -294,7 +294,7 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 		DockHost.Register( "blackboard", "Blackboard", _blackboard, icon: "format_list_bulleted" );
 
 		DockHost.Dock( "graph" );
-		
+
 		DockHost.Dock( "preview", position: DockPosition.Left, fraction: 0.26f );
 		DockHost.Dock( "properties", "preview", DockPosition.Bottom, 0.55f );
 
@@ -303,7 +303,7 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 		DockHost.Dock( "undohistory", "output", position: DockPosition.Center, fraction: 0.26f );
 		DockHost.Dock( "palette", "output", position: DockPosition.Center, fraction: 0.26f );
 		DockHost.Dock( "generatedcode", "output", position: DockPosition.Center, fraction: 0.26f );
-		
+
 		DockHost.Dock( "blackboard", "output", position: DockPosition.Right, fraction: 0.36f );
 
 		DockHost.Activate( "output" );
@@ -389,7 +389,7 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 			_properties.Target = _graph;
 			return;
 		}
-			
+
 		// A parameter node has nothing of its own to edit - show its parameter, like the Qt editor
 		if ( selectedNode is IBlackboardNode { ParameterIdentifier: var id } && id != default && _graph.TryFindParameter( id, out var parameter ) )
 		{

@@ -100,9 +100,9 @@ public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 
 	private void OnGraphSelectionChanged()
 	{
-		if ( !_pickingParameter ) 
+		if ( !_pickingParameter )
 			_blackboard?.Select( null );
-		
+
 		var nodePanel = SelectedNodes
 			.OrderByDescending( n => n is CommentPanel )
 			.FirstOrDefault();
@@ -121,7 +121,7 @@ public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 		var item = SelectedNodes
 			.OrderByDescending( n => n is CommentPanel )
 			.FirstOrDefault();
-	
+
 		if ( !item.IsValid() )
 		{
 			_window.OnNodeSelected( null );
