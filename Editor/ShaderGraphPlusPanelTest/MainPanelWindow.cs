@@ -443,13 +443,11 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 
 		UpdateTitle();
 
-		// TODO
 		_preview.Model = null;
 		_preview.Tint = Color.White;
 		_undoStack.Clear();
 		_generatedCode = "";
 		_generatedCodeView.Code = "";
-		//Selection.Set( _graph );
 
 		// TODO
 		//_output.ClearErrors();
@@ -896,7 +894,7 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 		panel.AddEventListener( "onmouseout", () => ClearStatusBarMessage() );
 	}
 
-	void RefreshRecentFiles()
+	private void RefreshRecentFiles()
 	{
 		_recentFilesMenu.Enabled = _recentFiles.Count > 0;
 
