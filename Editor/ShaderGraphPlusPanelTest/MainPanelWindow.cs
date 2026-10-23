@@ -20,13 +20,14 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 	private readonly UndoStack _undoStack = new();
 
 	private ShaderGraphPlusViewPanel _graphView;
-	private PropertiesPanel _properties;
-	private PalettePanel _palette;
-	private BlackboardPanel _blackboard;
 	private PreviewPanel _preview;
-	private GeneratedCodePanel _generatedCodeView;
-	private StatusBarPanel _statusBar;
+	private PropertiesPanel _properties;
 	private OutputPanel _output;
+	private UndoHistoryPanel _undoHistory;
+	private PalettePanel _palette;
+	private GeneratedCodePanel _generatedCodeView;
+	private BlackboardPanel _blackboard;
+	private StatusBarPanel _statusBar;
 
 	private ShaderGraphPlus.ShaderGraphPlus _graph;
 	private ShaderTemplateResource _shaderTemplate;
@@ -269,6 +270,8 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 		_properties.Target = _graph;
 		_properties.PropertyUpdated += OnPropertyUpdated;
 
+		_undoHistory = new UndoHistoryPanel();
+
 		_output = new OutputPanel();
 		_palette = new PalettePanel( IsSubgraph );
 		_generatedCodeView = new GeneratedCodePanel();
@@ -278,27 +281,30 @@ public sealed partial class ShaderGraphPlusPanelTest : PanelDockWindow
 		SetAllAttributes();
 
 		DockHost.Register( "graph", "Graph", _graphView, canClose: false, icon: "account_tree" );
-		DockHost.Register( "palette", "Palette", _palette, icon: "palette" );
-		DockHost.Register( "blackboard", "Blackboard", _blackboard, icon: "format_list_bulleted" );
-
+		
 		DockHost.Register( "preview", "Preview", _preview, icon: "photo" );
 		DockHost.Register( "properties", "Properties", _properties, icon: "tune" );
-		DockHost.Register( "console", "Console", () => new ConsolePanel(), icon: "text_snippet" );
+		
 		DockHost.Register( "output", "Output", _output, icon: "notes" );
+		DockHost.Register( "console", "Console", () => new ConsolePanel(), icon: "text_snippet" );
+		DockHost.Register( "undohistory", "Undo History", _undoHistory, icon: "history" );
+		DockHost.Register( "palette", "Palette", _palette, icon: "palette" );
 		DockHost.Register( "generatedcode", "Generated Code", _generatedCodeView, icon: "text_snippet" );
 
+		DockHost.Register( "blackboard", "Blackboard", _blackboard, icon: "format_list_bulleted" );
+
 		DockHost.Dock( "graph" );
+		
 		DockHost.Dock( "preview", position: DockPosition.Left, fraction: 0.26f );
+		DockHost.Dock( "properties", "preview", DockPosition.Bottom, 0.55f );
 
 		DockHost.Dock( "output", "graph", position: DockPosition.Bottom, fraction: 0.26f );
-		DockHost.Dock( "blackboard", "output", position: DockPosition.Right, fraction: 0.36f );
-
 		DockHost.Dock( "console", "output", position: DockPosition.Center, fraction: 0.26f );
-
+		DockHost.Dock( "undohistory", "output", position: DockPosition.Center, fraction: 0.26f );
 		DockHost.Dock( "palette", "output", position: DockPosition.Center, fraction: 0.26f );
-
 		DockHost.Dock( "generatedcode", "output", position: DockPosition.Center, fraction: 0.26f );
-		DockHost.Dock( "properties", "preview", DockPosition.Bottom, 0.55f );
+		
+		DockHost.Dock( "blackboard", "output", position: DockPosition.Right, fraction: 0.36f );
 
 		DockHost.Activate( "output" );
 
