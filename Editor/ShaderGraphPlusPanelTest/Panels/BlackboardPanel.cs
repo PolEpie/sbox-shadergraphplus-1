@@ -20,8 +20,6 @@ public sealed partial class BlackboardPanel : Panel
 	private string _filter = "";
 	private readonly Panel _list;
 
-	private readonly bool _isSubgraph;
-
 	private readonly Dictionary<string, IBlackboardParameterType> _availableParameters = new( StringComparer.OrdinalIgnoreCase );
 
 	private readonly HashSet<string> _collapsedGroups;
@@ -93,8 +91,6 @@ public sealed partial class BlackboardPanel : Panel
 
 	public BlackboardPanel( bool isSubgraph )
 	{
-		_isSubgraph = isSubgraph;
-
 		_collapsedGroups = EditorCookie.Get<List<string>>( CollapsedGroupsCookie, [] ).ToHashSet( StringComparer.OrdinalIgnoreCase );
 
 		AddClass( ShaderGraphPlusCssClasses.EditorDockPane );
@@ -255,7 +251,7 @@ public sealed partial class BlackboardPanel : Panel
 
 		var target = root;
 
-		if ( !_isSubgraph )
+		if ( !Graph.IsSubgraph )
 		{
 			var materialParametersMenu = root.AddMenu( "Parameter", "edit_attributes" );
 			var attributesMenu = root.AddMenu( "Attribute", "edit_attributes" );
