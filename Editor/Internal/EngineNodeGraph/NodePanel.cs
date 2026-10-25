@@ -93,6 +93,7 @@ public partial class NodePanel : CanvasPanel.Handle
 		else
 		{
 			OnTooltip = BuildTooltip;
+			Style.Cursor = "move";
 			Node.Changed += MarkNodeChanged;
 		}
 
