@@ -9,7 +9,8 @@ namespace ShaderGraphPlusPanelTest;
 /// Edits whatever is selected - the graph, a node or a blackboard parameter - with the local copy of the
 /// engine's <see cref="ControlSheet"/> (<c>Editor/Internal/EngineControlSheet</c>), like the Qt Properties widget.
 /// </summary>
-public sealed class PropertiesPanel : Panel
+[StyleSheet.Inline( "sgp_propertiespanel", Styles )]
+public sealed partial class PropertiesPanel : Panel
 {
 	private readonly Panel _heading;
 	private readonly Panel _headingRow;

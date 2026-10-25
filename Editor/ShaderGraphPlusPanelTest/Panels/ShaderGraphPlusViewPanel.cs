@@ -8,6 +8,7 @@ using ShaderGraphPlus.Nodes;
 
 namespace ShaderGraphPlusPanelTest;
 
+[StyleSheet.Inline( "sgp_shadergraphplusviewpanel", Styles )]
 public sealed partial class ShaderGraphPlusViewPanel : GraphViewPanel
 {
 	/// <summary>

@@ -8,7 +8,7 @@ namespace ShaderGraphPlus;
 /// <see cref="GetDropdownValues"/> - plain values, or <see cref="Entry"/> for a label, icon and
 /// description - and are found with [CustomEditor] the same way the widgets are.
 /// </summary>
-[StyleSheet.Inline( "sgp-dropdowncontrol", Styles )]
+[StyleSheet.Inline( "sgp_dropdowncontrol", Styles )]
 public abstract class DropdownControlPlus<T> : BaseControl
 {
 	const string Styles = """

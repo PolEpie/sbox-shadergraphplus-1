@@ -4,7 +4,8 @@ using ShaderGraphPlus;
 
 namespace ShaderGraphPlusPanelTest;
 
-public sealed class PalettePanel : Panel
+[StyleSheet.Inline( "sgp_palettepanel", Styles )]
+public sealed partial class PalettePanel : Panel
 {
 	private TextInput _searchFilter;
 	private readonly Sandbox.UI.TreeView<PaletteTreeNode> _tree;

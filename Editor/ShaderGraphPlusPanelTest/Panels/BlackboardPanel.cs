@@ -14,6 +14,7 @@ namespace ShaderGraphPlusPanelTest;
 /// name, default value, and tags for the settings worth seeing at a glance (sRGB, attribute, range...).
 /// Parameters and groups reorder by dragging, and parameters rename in place.
 /// </summary>
+[StyleSheet.Inline( "sgp_blackboardpanel", Styles )]
 public sealed partial class BlackboardPanel : Panel
 {
 	private TextInput _searchFilter;

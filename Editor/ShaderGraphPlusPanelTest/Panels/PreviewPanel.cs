@@ -38,6 +38,7 @@ internal sealed class ThrobberPanel : Panel
 	}
 }
 
+[StyleSheet.Inline( "sgp_previewpanel", Styles )]
 public sealed partial class PreviewPanel : Panel
 {
 	private const string BoxModel = "models/dev/box.vmdl";
