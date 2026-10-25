@@ -122,7 +122,11 @@ public class ColorValueEditor : NodeValueEditor
 		if ( Property is null || _popup is { IsValid: true } )
 			return;
 
-		_popup = new Popup( this, Popup.PositionMode.RightTop, 1 );
+		// Popup placement reads Box.Rect, which ignores the canvas pan/zoom transform. Anchor on the on-screen rect instead.
+		var topLeft = PanelPositionToScreenPosition( Vector2.Zero );
+		var bottomRight = PanelPositionToScreenPosition( Box.Rect.Size );
+		_popup = new Popup { AnchorRect = new Rect( topLeft, bottomRight - topLeft ) };
+		_popup.SetPositioning( this, Popup.PositionMode.RightTop, 1 );
 		var picker = _popup.AddChild<ColorPickerControl>();
 		picker.Property = Property;
 	}
