@@ -19,7 +19,7 @@ public static class NodeTheme
 	/// <summary>
 	/// Node corner radius, in node units.
 	/// </summary>
-	public const float Radius = 8f;
+	public const float Radius = 4f;
 
 	/// <summary>
 	/// A node's body from its tint: dark, keeping a hint of the tint.
