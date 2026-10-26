@@ -203,7 +203,7 @@ public abstract class BaseNodePlus : IGraphNode, EngineGraph.INode
 	}
 
 	[JsonIgnore, Hide, Browsable( false )]
-	public bool HasTitleBar => true;
+	public virtual bool HasTitleBar => true;
 
 	[JsonIgnore, Hide, Browsable( false )]
 	public bool HasSubtitle => !string.IsNullOrWhiteSpace( Subtitle );

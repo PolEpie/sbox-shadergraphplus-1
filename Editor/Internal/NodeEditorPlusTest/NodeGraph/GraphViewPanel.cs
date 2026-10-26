@@ -1,6 +1,7 @@
 using Sandbox.UI;
 using EngineNodeGraph;
 using ShaderGraphPlus;
+using ShaderGraphPlus.Nodes;
 using ShaderGraphPlusPanelTest;
 
 namespace NodeEditorPlusTest;
@@ -23,19 +24,21 @@ public class GraphViewPanel : NodeGraphPanel
 	/// left the view when this is 0 in <see cref="Tick"/>.
 	/// </summary>
 	private int _dragDepth;
+
 	private bool _hasDropped;
+	private bool _freehandSelectingWires;
+	private bool _canOpenContextMenu = true;
+
 	private NodePanel _dropPreview;
 
 	public GraphViewPanel() : base()
 	{
-
 	}
 
 	/// <summary>
 	/// The editor can read the clipboard, so empty space offers to paste.
 	/// </summary>
 	protected override string ReadClipboard() => Editor.EditorUtility.Clipboard.Paste();
-
 
 	public override void Tick()
 	{
@@ -70,6 +73,16 @@ public class GraphViewPanel : NodeGraphPanel
 	protected virtual INode CreateDroppedNode( PanelEvent e )
 	{
 		return Graph is not null && NodeTypeFromPanelEvent( e ) is { } type ? type.CreateNode( base.Graph ) : null;
+	}
+
+	protected override NodePanel CreateNodePanel( INode node, bool isPreview = false )
+	{
+		if ( node is WireTieNode )
+		{
+			return new WireTiePanel( this, node, isPreview );
+		}
+
+		return base.CreateNodePanel( node, isPreview );
 	}
 
 	protected override void OnDragEnter( PanelEvent e )
@@ -161,5 +174,51 @@ public class GraphViewPanel : NodeGraphPanel
 		_dropPreview?.Delete( true );
 		_dropPreview = null;
 		_dragDepth = 0;
+	}
+
+	protected override void OnMouseUp( MousePanelEvent e )
+	{
+		if ( e.KeyboardModifiers == KeyboardModifiers.Ctrl && e.Button == "mouseright" )
+		{
+			_freehandSelectingWires = false;
+			_canOpenContextMenu = false;
+			SGPLogger.Info( "CTRL + Right Mouse Button Up" );
+		}
+
+		base.OnMouseUp( e );
+	}
+
+	protected override void OnMouseDown( MousePanelEvent e )
+	{
+
+		if ( e.KeyboardModifiers == KeyboardModifiers.Ctrl && e.Button == "mouseright" )
+		{
+			_freehandSelectingWires = true;
+			
+			SGPLogger.Info( "CTRL + Right Mouse Button Down" );
+		}
+
+		base.OnMouseDown( e );
+	}
+
+	protected override void OnMouseMove( MousePanelEvent e )
+	{
+		if ( _freehandSelectingWires )
+		{
+			SGPLogger.Info( "DrawingConnectionLine" );
+		}
+
+		base.OnMouseMove( e );
+	}
+
+	protected override void CreateNodeMenu( Menu menu, Vector2 position, PlugPanel targetPlug = null )
+	{
+		if ( !_canOpenContextMenu )
+		{
+			_canOpenContextMenu = true;
+			return;
+		}
+
+		base.CreateNodeMenu( menu, position, targetPlug );
 	}
 }
