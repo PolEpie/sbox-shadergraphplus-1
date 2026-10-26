@@ -182,6 +182,7 @@ public class GraphViewPanel : NodeGraphPanel
 		{
 			_freehandSelectingWires = false;
 			_canOpenContextMenu = false;
+
 			SGPLogger.Info( "CTRL + Right Mouse Button Up" );
 		}
 
@@ -190,7 +191,6 @@ public class GraphViewPanel : NodeGraphPanel
 
 	protected override void OnMouseDown( MousePanelEvent e )
 	{
-
 		if ( e.KeyboardModifiers == KeyboardModifiers.Ctrl && e.Button == "mouseright" )
 		{
 			_freehandSelectingWires = true;
@@ -211,7 +211,7 @@ public class GraphViewPanel : NodeGraphPanel
 		base.OnMouseMove( e );
 	}
 
-	protected override void CreateNodeMenu( Menu menu, Vector2 position, PlugPanel targetPlug = null )
+	protected override void OpenContextMenu( Vector2 position, NodePanel node, PlugPanel targetPlug = null, Action onClose = null )
 	{
 		if ( !_canOpenContextMenu )
 		{
@@ -219,6 +219,6 @@ public class GraphViewPanel : NodeGraphPanel
 			return;
 		}
 
-		base.CreateNodeMenu( menu, position, targetPlug );
+		base.OpenContextMenu( position, node, targetPlug, onClose );
 	}
 }
