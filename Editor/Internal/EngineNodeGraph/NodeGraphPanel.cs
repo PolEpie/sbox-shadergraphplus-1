@@ -2,6 +2,12 @@ using Sandbox.UI;
 
 namespace EngineNodeGraph;
 
+public enum NodeGraphGridStyle
+{
+	LineGrid,
+	DotGrid,
+}
+
 /// <summary>
 /// Shows an <see cref="IGraph"/> as nodes and wires, like the editor's node graph. Middle-drag
 /// pans, the wheel zooms, left-drag on empty space box-selects, Delete removes the selection.
@@ -18,6 +24,8 @@ public partial class NodeGraphPanel : CanvasPanel
 	/// Fade the grid out as the view zooms out.
 	/// </summary>
 	public virtual bool FadeOutBackground => true;
+
+	public NodeGraphGridStyle GridStyle { get; set; } = NodeGraphGridStyle.LineGrid;
 
 	IGraph _graph;
 
@@ -246,8 +254,24 @@ public partial class NodeGraphPanel : CanvasPanel
 		painter.Fill = NodeTheme.Canvas;
 		painter.Stroke = Stroke.None;
 		painter.Rect( viewport );
-
-		DrawGrid( painter, viewport );
+		
+		var alpha = FadeOutBackground ? Math.Clamp( ( Zoom - 0.3f ) / 0.3f, 0f, 1f ) : 1f;
+		
+		if ( alpha > 0f )
+		{
+			switch ( GridStyle )
+			{
+				case NodeGraphGridStyle.LineGrid:
+					DrawLineGrid( painter, viewport, alpha );
+					break;
+				case NodeGraphGridStyle.DotGrid:
+					DrawDotGrid( painter, viewport, alpha );
+					break;
+				default:
+					DrawLineGrid( painter, viewport, alpha );
+					break;
+			}
+		}
 
 		// Before the nodes draw: they paint the wires laid out here
 		UpdateConnections();
@@ -258,7 +282,7 @@ public partial class NodeGraphPanel : CanvasPanel
 	/// <summary>
 	/// One soft white dot in the middle of a tile.
 	/// </summary>
-	static Texture DotTexture()
+	private static Texture DotTexture()
 	{
 		if ( _dot is not null ) return _dot;
 
@@ -283,18 +307,68 @@ public partial class NodeGraphPanel : CanvasPanel
 	/// <summary>
 	/// A dot every two grid steps, fading out as the view zooms out.
 	/// </summary>
-	void DrawGrid( Painter painter, Rect viewport )
+	private void DrawDotGrid( Painter painter, Rect viewport, float alpha )
 	{
-		var alpha = FadeOutBackground ? Math.Clamp( (Zoom - 0.3f) / 0.3f, 0f, 1f ) : 1f;
-		if ( alpha <= 0f ) return;
-
 		var step = GridSize * 2f;
-		var tile = step * (CanvasToScreen( Vector2.One ) - CanvasToScreen( Vector2.Zero )).x;
+		var tile = step * ( CanvasToScreen( Vector2.One ) - CanvasToScreen( Vector2.Zero ) ).x;
 		var origin = CanvasToScreen( Vector2.Zero ) - viewport.Position - new Vector2( tile * 0.5f );
-		var offset = new Vector2( (origin.x % tile + tile) % tile, (origin.y % tile + tile) % tile );
+		var offset = new Vector2( ( origin.x % tile + tile ) % tile, ( origin.y % tile + tile ) % tile );
 
 		painter.Fill = Fill.Image( DotTexture(), Color.White.WithAlpha( 0.1f * alpha ), Length.Pixels( tile ), Length.Pixels( tile ),
 			Length.Pixels( offset.x ), Length.Pixels( offset.y ), BackgroundRepeat.Repeat );
 		painter.Rect( viewport );
+	}
+
+	private void DrawLineGrid( Painter painter, Rect viewport, float alpha )
+	{
+		var min = ScreenToCanvas( viewport.Position );
+		var max = ScreenToCanvas( viewport.Position + viewport.Size );
+		var pixelsPerUnit = viewport.Width / (max.x - min.x);
+
+		var step = GridSize;
+		var majorEvery = GridSize / 2;
+
+		while ( step * pixelsPerUnit < majorEvery )
+		{
+			step *= 2;
+		}
+			
+		var major = Math.Max( step, GridSize * majorEvery );
+		var minorColor = Color.White.WithAlpha( 0.04f * alpha );
+		var majorColor = Color.White.WithAlpha( 0.09f * alpha );
+
+		if ( step < major )
+		{
+			DrawLines( painter, min, max, step, major, minorColor );
+		}
+			
+		DrawLines( painter, min, max, major, 0, majorColor );
+	}
+
+	private void DrawLines( Painter painter, Vector2 min, Vector2 max, float step, float skipEvery, Color color )
+	{
+		painter.Stroke = Stroke.Solid( color, 1 );
+
+		for ( var x = MathF.Ceiling( min.x / step ) * step; x <= max.x; x += step )
+		{
+			if ( skipEvery > 0 && IsMultiple( x, skipEvery ) )
+				continue;
+			
+			painter.Line( CanvasToScreen( new Vector2( x, min.y ) ), CanvasToScreen( new Vector2( x, max.y ) ) );
+		}
+
+		for ( var y = MathF.Ceiling( min.y / step ) * step; y <= max.y; y += step )
+		{
+			if ( skipEvery > 0 && IsMultiple( y, skipEvery ) )
+				continue;
+
+			painter.Line( CanvasToScreen( new Vector2( min.x, y ) ), CanvasToScreen( new Vector2( max.x, y ) ) );
+		}
+	}
+
+	private static bool IsMultiple( float value, float of )
+	{
+		var r = MathF.Abs( value % of );
+		return r < 0.001f || of - r < 0.001f;
 	}
 }
