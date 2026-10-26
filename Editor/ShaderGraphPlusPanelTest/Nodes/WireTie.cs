@@ -22,7 +22,7 @@ public class WireTiePanel : NodePanel
 	{
 		//AddClass( "reroute" );
 
-	
+
 	}
 
 	protected override void Layout()

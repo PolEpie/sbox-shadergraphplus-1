@@ -194,7 +194,7 @@ public class GraphViewPanel : NodeGraphPanel
 		if ( e.KeyboardModifiers == KeyboardModifiers.Ctrl && e.Button == "mouseright" )
 		{
 			_freehandSelectingWires = true;
-			
+
 			SGPLogger.Info( "CTRL + Right Mouse Button Down" );
 		}
 
