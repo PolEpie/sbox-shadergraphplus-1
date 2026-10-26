@@ -85,12 +85,12 @@ public partial class NodeGraphPanel : CanvasPanel
 	/// <summary>
 	/// Outline of a node under the cursor.
 	/// </summary>
-	public Color HoverBorderColor { get; set; } = NodeTheme.HairlineHover;
+	public Color HoverBorderColor { get; set; } = NodeTheme.OutlineHover;
 
 	/// <summary>
 	/// Outline of a node that isn't selected, hovered or in error.
 	/// </summary>
-	public Color BorderColor { get; set; } = NodeTheme.Hairline;
+	public Color BorderColor { get; set; } = NodeTheme.Outline;
 
 	/// <summary>
 	/// Outline and glow of a <see cref="NodePanel.Highlighted"/> node. Apart from the selection's, so

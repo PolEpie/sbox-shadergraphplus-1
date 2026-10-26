@@ -80,7 +80,7 @@ public class IntValueEditorUI : EngineGraph.NodeValueEditor
 		var field = EngineGraph.NodeTheme.FieldRect( localRect );
 		var hover = paint.HasMouseOver || HasActive;
 
-		paint.SetPen( hover ? EngineGraph.NodeTheme.HairlineHover : EngineGraph.NodeTheme.Hairline );
+		paint.SetPen( hover ? EngineGraph.NodeTheme.OutlineHover : EngineGraph.NodeTheme.Outline );
 		paint.SetBrush( EngineGraph.NodeTheme.FieldBackground );
 		paint.DrawRect( field, 4f );
 
