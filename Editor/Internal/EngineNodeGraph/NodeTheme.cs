@@ -13,8 +13,8 @@ public static class NodeTheme
 	public static readonly Color Text = Color.Parse( "#ECECEC" ).Value;
 	public static readonly Color TextMuted = Color.Parse( "#8E8E8E" ).Value;
 	public static readonly Color FieldBackground = Color.Parse( "#1A1A1A" ).Value;
-	public static readonly Color Hairline = Color.White.WithAlpha( 0.07f );
-	public static readonly Color HairlineHover = Color.White.WithAlpha( 0.22f );
+	public static readonly Color Hairline = Color.Gray.Darken( 0.4f );
+	public static readonly Color HairlineHover = Color.White.Darken( 0.25f );
 
 	/// <summary>
 	/// Node corner radius, in node units.
