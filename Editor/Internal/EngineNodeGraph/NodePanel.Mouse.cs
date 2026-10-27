@@ -76,6 +76,11 @@ public partial class NodePanel
 			_pushedMove = false;
 			Graph.PushRedo();
 		}
+		else if ( !cancelled && !IsPreview )
+		{
+			// Nothing moved, so this was a click
+			Node.OnClick( this, Graph.MouseCanvas - Position );
+		}
 	}
 
 	protected override void OnRightClick( MousePanelEvent e )
