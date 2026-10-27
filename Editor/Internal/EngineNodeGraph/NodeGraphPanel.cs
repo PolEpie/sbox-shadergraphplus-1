@@ -214,7 +214,7 @@ public partial class NodeGraphPanel : CanvasPanel
 
 		if ( _nodePreview.IsValid() && _previewFollowsMouse )
 		{
-			_nodePreview.MoveTo( MouseCanvas.SnapToGrid( GridSize ) );
+			_nodePreview.MoveOriginTo( MouseCanvas );
 		}
 
 		base.Tick();
